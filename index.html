@@ -487,7 +487,13 @@ function initPrayers() {
       })
       .catch(() => loadPrayers(lat, lon, `${lat.toFixed(2)}, ${lon.toFixed(2)}`));
   }, () => {
-    document.getElementById('prayer-box').innerHTML = '<div class="prayer-error">Location access denied. Enable location to see prayer times.</div>';
+    // If running in Electron (Mac app), fall back to Houston
+    const isElectron = navigator.userAgent.toLowerCase().includes('electron');
+    if(isElectron) {
+      loadPrayers(29.7604, -95.3698, 'Houston');
+    } else {
+      document.getElementById('prayer-box').innerHTML = '<div class="prayer-error">Location access denied. Enable location to see prayer times.</div>';
+    }
   });
 }
 
