@@ -80,6 +80,10 @@
   .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
   /* ── Dashboard / score+prayer widget ── */
   .dashboard-box { display: flex; gap: 10px; margin-bottom: .75rem; align-items: stretch; }
+  @media (max-width: 560px) {
+    .dashboard-box { flex-direction: column; }
+    .dashboard-left { flex: none; width: 100% !important; }
+  }
   /* Score card */
   .dashboard-left { background: #1a7a52; border-radius: var(--border-radius-lg); padding: .75rem; color: white; flex: 0 0 240px; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; }
   .dash-score-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
@@ -638,22 +642,22 @@ function renderPrayers(times, city) {
   box.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
       <div>
-        <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:1px">Now</div>
-        <div style="font-size:26px;font-weight:700;color:var(--color-text-primary);line-height:1.05;letter-spacing:-0.5px" id="current-time">--:-- --</div>
-        <div style="font-size:11px;color:var(--color-text-secondary);margin-top:3px" id="prayer-date-line">—</div>
+        <div style="font-size:13px;color:var(--color-text-secondary);margin-bottom:1px">Now</div>
+        <div style="font-size:32px;font-weight:700;color:var(--color-text-primary);line-height:1.05;letter-spacing:-0.5px" id="current-time">--:-- --</div>
+        <div style="font-size:13px;color:var(--color-text-secondary);margin-top:3px" id="prayer-date-line">—</div>
       </div>
       <div style="text-align:right">
-        <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:1px">Next prayer</div>
-        <div style="font-size:15px;font-weight:700;color:var(--color-text-primary);line-height:1.1">${next.name} <span style="font-weight:400;color:var(--color-text-secondary)">${to12hr(next.str)}</span></div>
-        <div style="font-size:12px;color:#1D9E75;font-weight:600;margin-top:2px">in ${countdown}</div>
+        <div style="font-size:13px;color:var(--color-text-secondary);margin-bottom:1px">Next prayer</div>
+        <div style="font-size:17px;font-weight:700;color:var(--color-text-primary);line-height:1.1">${next.name} <span style="font-weight:400;color:var(--color-text-secondary)">${to12hr(next.str)}</span></div>
+        <div style="font-size:14px;color:#1D9E75;font-weight:600;margin-top:2px">in ${countdown}</div>
       </div>
     </div>
     <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:2px;margin-bottom:6px">
       ${parsed.map((p,i) => {
         const active = i === nextIdx;
-        return `<div style="text-align:center;padding:5px 2px;border-radius:8px;${active?'background:#1D9E75;':''}">
-          <div style="font-size:10px;margin-bottom:2px;${active?'color:#E1F5EE;':'color:var(--color-text-secondary);'}">${p.name}</div>
-          <div style="font-size:11px;font-weight:600;${active?'color:#ffffff;':'color:var(--color-text-primary);'}">${to12hr(p.str)}</div>
+        return `<div style="text-align:center;padding:6px 2px;border-radius:8px;${active?'background:#1D9E75;':''}">
+          <div style="font-size:11px;margin-bottom:2px;${active?'color:#E1F5EE;':'color:var(--color-text-secondary);'}">${p.name}</div>
+          <div style="font-size:12px;font-weight:600;${active?'color:#ffffff;':'color:var(--color-text-primary);'}">${to12hr(p.str)}</div>
         </div>`;
       }).join('')}
     </div>
