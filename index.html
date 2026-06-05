@@ -32,12 +32,15 @@
   .container { width: 100%; max-width: 640px; }
   .app { padding: 1.5rem; background: var(--color-background-primary); border-radius: var(--border-radius-lg); border: 0.5px solid var(--color-border-tertiary); }
   .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; }
-  .header h1 { font-size: 20px; font-weight: 500; }
+  .header h1 { font-size: 17px; font-weight: 500; white-space: nowrap; }
   .header p { font-size: 13px; color: var(--color-text-secondary); margin-top: 2px; }
   .tabs { display: flex; gap: 8px; margin-bottom: 1.5rem; border-bottom: 0.5px solid var(--color-border-tertiary); }
-  .tab { font-size: 13px; padding: 6px 14px; border: none; background: none; color: var(--color-text-secondary); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -0.5px; font-family: var(--font-sans); }
-  .tab.active { color: var(--color-text-primary); border-bottom: 2px solid #1D9E75; font-weight: 500; }
-  .tab:hover { color: var(--color-text-primary); }
+  .tab { font-size: 15px; font-weight: 500; padding: 7px 16px; border: none; background: none; color: var(--color-text-secondary); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -0.5px; font-family: var(--font-sans); border-radius: 8px 8px 0 0; transition: all 0.15s; }
+  .tab.active { color: #fff; background: #1D9E75; border-bottom: 2px solid #1D9E75; }
+  .tab[onclick*="calendar"] { }
+  .tab[onclick*="calendar"].active { background: #2E86C1; border-bottom-color: #2E86C1; }
+  .tab[onclick*="guide"].active { background: #8E44AD; border-bottom-color: #8E44AD; }
+  .tab:hover:not(.active) { color: var(--color-text-primary); background: var(--color-background-secondary); }
   .section { margin-bottom: 1.5rem; }
   .section-title { font-size: 13px; font-weight: 500; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: .05em; margin-bottom: .75rem; }
   .fast-card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: .875rem 1rem; margin-bottom: .5rem; display: flex; align-items: center; gap: 12px; }
@@ -100,7 +103,7 @@
   .dash-bar.prev { background: rgba(255,255,255,.38); }
   .dash-bar-label { font-size: 9px; opacity: .7; text-align: center; margin-top: 2px; }
   /* Prayer card */
-  .dashboard-right { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: .75rem .875rem; flex: 1; min-width: 0; }
+  .dashboard-right { background: var(--color-background-primary); border: 2px solid #1D9E75; border-radius: var(--border-radius-lg); padding: .75rem .875rem; flex: 1; min-width: 0; }
   .score-box { background: linear-gradient(135deg, #0F6E56, #1D9E75); border-radius: var(--border-radius-lg); padding: 1rem 1.25rem; margin-bottom: 1rem; color: white; }
   .score-title { font-size: 11px; font-weight: 500; opacity: 0.8; text-transform: uppercase; letter-spacing: .06em; margin-bottom: .75rem; }
   .score-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: .75rem; }
@@ -143,7 +146,6 @@
   <div class="header">
     <div>
       <h1>Islamic fasting calendar (Irfan Bandey)</h1>
-      <p id="hijri-today">Loading...</p>
     </div>
     <i class="ti ti-moon" style="font-size:28px;color:#1D9E75" aria-hidden="true"></i>
   </div>
@@ -368,9 +370,37 @@ function generateFasts(fromHY, toHY) {
 const todayH = gToH(TODAY);
 const FASTS = generateFasts(todayH.year - 1, todayH.year + 2);
 
-// Show today's Hijri date in header
-document.getElementById('hijri-today').textContent =
-  `Today: ${todayH.day} ${HIJRI_MONTHS[todayH.month-1]} ${todayH.year} AH · Global rukyah`;
+// Hijri day offset (user-adjustable for local moon sighting)
+let hijriOffset = parseInt(localStorage.getItem('hijri_offset') || '0');
+
+function getAdjustedHijri(date) {
+  const adjusted = new Date(date);
+  adjusted.setDate(adjusted.getDate() + hijriOffset);
+  return gToH(adjusted);
+}
+
+function updateHijriHeader() {
+  const h = getAdjustedHijri(TODAY);
+  const el = document.getElementById('hijri-today');
+  if(el) el.textContent = `Today: ${h.day} ${HIJRI_MONTHS[h.month-1]} ${h.year} AH`;
+  const lbl = document.getElementById('hijri-offset-label');
+  if(lbl) lbl.textContent = hijriOffset === 0 ? '' : (hijriOffset > 0 ? `+${hijriOffset}` : `${hijriOffset}`);
+}
+
+function adjustHijri(delta) {
+  hijriOffset = Math.max(-2, Math.min(2, hijriOffset + delta));
+  localStorage.setItem('hijri_offset', hijriOffset);
+  updateHijriHeader();
+  // Also update the date line in prayer box
+  const dl = document.getElementById('prayer-date-line');
+  if(dl) {
+    const h = getAdjustedHijri(TODAY);
+    const greg = TODAY.toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'});
+    dl.textContent = `${h.day} ${HIJRI_MONTHS[h.month-1]} ${h.year} · ${greg}`;
+  }
+}
+
+updateHijriHeader();
 
 function allFastDates() {
   const s = new Set();
@@ -641,7 +671,14 @@ function renderPrayers(times, city) {
       <div>
         <div style="font-size:13px;color:var(--color-text-secondary);margin-bottom:1px">Now</div>
         <div style="font-size:32px;font-weight:700;color:var(--color-text-primary);line-height:1.05;letter-spacing:-0.5px" id="current-time">--:-- --</div>
-        <div style="font-size:13px;color:var(--color-text-secondary);margin-top:3px" id="prayer-date-line">—</div>
+        <div style="font-size:13px;color:var(--color-text-secondary);margin-top:3px;display:flex;align-items:center;gap:6px">
+          <span id="prayer-date-line">—</span>
+          <span style="display:flex;align-items:center;gap:3px">
+            <button onclick="adjustHijri(-1)" style="font-family:var(--font-sans);font-size:11px;padding:1px 7px;border-radius:20px;border:1px solid var(--color-border-tertiary);background:var(--color-background-secondary);color:var(--color-text-secondary);cursor:pointer">−1</button>
+            <span id="hijri-offset-label" style="font-size:11px;color:#1D9E75;min-width:16px;text-align:center"></span>
+            <button onclick="adjustHijri(1)" style="font-family:var(--font-sans);font-size:11px;padding:1px 7px;border-radius:20px;border:1px solid var(--color-border-tertiary);background:var(--color-background-secondary);color:var(--color-text-secondary);cursor:pointer">+1</button>
+          </span>
+        </div>
       </div>
       <div style="text-align:right">
         <div style="font-size:13px;color:var(--color-text-secondary);margin-bottom:1px">Next prayer</div>
@@ -730,7 +767,7 @@ function updateClock() {
   // Date line: Hijri + Gregorian
   const dl = document.getElementById('prayer-date-line');
   if(dl) {
-    const hd = gToH(now);
+    const hd = getAdjustedHijri(now);
     const greg = now.toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'});
     dl.textContent = `${hd.day} ${HIJRI_MONTHS[hd.month-1]} ${hd.year} · ${greg}`;
   }
