@@ -570,7 +570,14 @@ function renderPrayers(times, city) {
   const now = new Date();
   const parsed = PRAYER_KEYS.map((k,i) => ({ name: PRAYER_NAMES[i], time: parseTime(times[k]), str: times[k] }));
   let nextIdx = parsed.findIndex(p => p.time > now);
-  if(nextIdx === -1) nextIdx = 0;
+  if(nextIdx === -1) {
+    // All prayers passed — show tomorrow's Fajr
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(parsed[0].time.getHours(), parsed[0].time.getMinutes(), 0, 0);
+    parsed[0].time = tomorrow;
+    nextIdx = 0;
+  }
   const next = parsed[nextIdx];
   const diffMs = next.time - now;
   const diffH = Math.floor(diffMs/3600000);
@@ -581,14 +588,17 @@ function renderPrayers(times, city) {
   box.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
       <div>
-        <div class="prayer-next-name">Next prayer</div>
-        <div style="display:flex;align-items:baseline;gap:8px">
+        <div style="font-size:11px;color:var(--color-text-tertiary);margin-bottom:2px">Now</div>
+        <div style="font-size:22px;font-weight:600;color:var(--color-text-primary)" id="current-time">--:-- --</div>
+      </div>
+      <div style="text-align:right">
+        <div class="prayer-next-name" style="text-align:right">Next prayer</div>
+        <div style="display:flex;align-items:baseline;gap:8px;justify-content:flex-end">
           <div class="prayer-next-time">${next.name}</div>
           <div style="font-size:16px;color:var(--color-text-secondary)">${to12hr(next.str)}</div>
           <span class="prayer-next-label">in ${countdown}</span>
         </div>
       </div>
-      <i class="ti ti-mosque" style="font-size:28px;color:#1D9E75" aria-hidden="true"></i>
     </div>
     <div class="prayer-grid">
       ${parsed.map((p,i) => `<div class="prayer-item${i===nextIdx?' active':''}">
@@ -653,6 +663,19 @@ function toggleFast(el, key) {
   localStorage.setItem(key, checked ? '1' : '0');
   calcScore();
 }
+
+function updateClock() {
+  const el = document.getElementById('current-time');
+  if(!el) return;
+  const now = new Date();
+  let h = now.getHours();
+  const m = String(now.getMinutes()).padStart(2,'0');
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  el.textContent = `${h}:${m} ${ampm}`;
+}
+updateClock();
+setInterval(updateClock, 1000);
 
 function retryLocation() {
   document.getElementById('prayer-box').innerHTML = '<div class="prayer-error">Requesting location...</div>';
