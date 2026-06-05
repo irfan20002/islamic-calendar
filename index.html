@@ -42,6 +42,11 @@
   .section-title { font-size: 13px; font-weight: 500; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: .05em; margin-bottom: .75rem; }
   .fast-card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: .875rem 1rem; margin-bottom: .5rem; display: flex; align-items: center; gap: 12px; }
   .fast-card.next { border-left: 3px solid #1D9E75; }
+  .fast-card.done { opacity: 0.5; }
+  .fast-card.done .fast-name { text-decoration: line-through; }
+  .fast-check { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #1D9E75; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: all 0.2s; }
+  .fast-check.checked { background: #1D9E75; border-color: #1D9E75; }
+  .fast-check.checked::after { content: '✓'; color: white; font-size: 13px; font-weight: bold; }
   .fast-icon { width: 36px; height: 36px; border-radius: var(--border-radius-md); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
   .fast-icon i { font-size: 18px; }
   .fast-info { flex: 1; }
@@ -332,7 +337,11 @@ function renderUpcoming() {
     let cdClass = diff <= 7 ? 'cd-soon' : 'cd-future';
     let countText = diff===0 ? 'Today' : diff===1 ? 'Tomorrow' : `In ${diff} days`;
     const dateStr = f.dates.length>1 ? `${formatDate(first)} – ${formatDate(last)}` : formatDate(first);
-    card.innerHTML = `<div class="fast-icon" style="background:${iconBg}"><i class="ti ${f.icon}" style="color:${iconColor}" aria-hidden="true"></i></div>
+    const key = `fast_${f.name}_${firstDate(f).toDateString()}`;
+    const isDone = localStorage.getItem(key) === '1';
+    if(isDone) card.classList.add('done');
+    card.innerHTML = `<div class="fast-check ${isDone?'checked':''}" onclick="toggleFast(this,'${key}')"></div>
+      <div class="fast-icon" style="background:${iconBg}"><i class="ti ${f.icon}" style="color:${iconColor}" aria-hidden="true"></i></div>
       <div class="fast-info">
         <div class="fast-name">${f.name}</div>
         <div class="fast-date">${dateStr}</div>
@@ -492,9 +501,26 @@ function initPrayers() {
     if(isElectron) {
       loadPrayers(29.7604, -95.3698, 'Houston');
     } else {
-      document.getElementById('prayer-box').innerHTML = '<div class="prayer-error">Location access denied. Enable location to see prayer times.</div>';
+      const errCodes = {1:'PERMISSION_DENIED', 2:'POSITION_UNAVAILABLE', 3:'TIMEOUT'};
+    document.getElementById('prayer-box').innerHTML = `
+      <div class="prayer-error">Location error — code: <strong>${err.code} (${errCodes[err.code]||'UNKNOWN'})</strong><br>${err.message||''}</div>
+      <div style="text-align:center;margin-top:.75rem">
+        <button onclick="retryLocation()" style="font-family:var(--font-sans);font-size:13px;padding:6px 16px;border-radius:20px;border:1px solid #1D9E75;background:#E1F5EE;color:#085041;cursor:pointer">Retry location</button>
+      </div>`;
     }
   });
+}
+
+function toggleFast(el, key) {
+  const card = el.closest('.fast-card');
+  const checked = el.classList.toggle('checked');
+  card.classList.toggle('done', checked);
+  localStorage.setItem(key, checked ? '1' : '0');
+}
+
+function retryLocation() {
+  document.getElementById('prayer-box').innerHTML = '<div class="prayer-error">Requesting location...</div>';
+  initPrayers();
 }
 
 initPrayers();
