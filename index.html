@@ -78,6 +78,16 @@
   .weekly-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: .75rem; }
   .day-badge { font-size: 12px; padding: 4px 12px; border-radius: 20px; background: #E1F5EE; color: #085041; font-weight: 500; }
   .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+  .score-box { background: linear-gradient(135deg, #0F6E56, #1D9E75); border-radius: var(--border-radius-lg); padding: 1rem 1.25rem; margin-bottom: 1rem; color: white; }
+  .score-title { font-size: 11px; font-weight: 500; opacity: 0.8; text-transform: uppercase; letter-spacing: .06em; margin-bottom: .5rem; }
+  .score-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .score-item { text-align: center; background: rgba(255,255,255,0.15); border-radius: var(--border-radius-md); padding: 8px 4px; }
+  .score-num { font-size: 22px; font-weight: 600; line-height: 1; }
+  .score-label { font-size: 10px; opacity: 0.8; margin-top: 3px; }
+  .score-bar-wrap { margin-top: .75rem; }
+  .score-bar-label { display: flex; justify-content: space-between; font-size: 11px; opacity: 0.8; margin-bottom: 4px; }
+  .score-bar { height: 6px; background: rgba(255,255,255,0.25); border-radius: 3px; overflow: hidden; }
+  .score-bar-fill { height: 100%; background: white; border-radius: 3px; transition: width 0.5s; }
   .prayer-box { background: var(--color-background-secondary); border-radius: var(--border-radius-lg); padding: 1rem 1.25rem; margin-bottom: 1.5rem; }
   .prayer-next { display: flex; align-items: center; gap: 10px; margin-bottom: .75rem; }
   .prayer-next-name { font-size: 13px; color: var(--color-text-secondary); }
@@ -104,6 +114,20 @@
       <p id="hijri-today">Loading...</p>
     </div>
     <i class="ti ti-moon" style="font-size:28px;color:#1D9E75" aria-hidden="true"></i>
+  </div>
+
+  <div class="score-box" id="score-box">
+    <div class="score-title">🌙 My fasting score</div>
+    <div class="score-grid">
+      <div class="score-item"><div class="score-num" id="sc-today">0</div><div class="score-label">Today</div></div>
+      <div class="score-item"><div class="score-num" id="sc-week">0</div><div class="score-label">This week</div></div>
+      <div class="score-item"><div class="score-num" id="sc-month">0</div><div class="score-label">This month</div></div>
+      <div class="score-item"><div class="score-num" id="sc-year">0</div><div class="score-label">This year</div></div>
+    </div>
+    <div class="score-bar-wrap">
+      <div class="score-bar-label"><span id="sc-streak-label">🔥 Streak</span><span id="sc-streak-val">0 days</span></div>
+      <div class="score-bar"><div class="score-bar-fill" id="sc-bar" style="width:0%"></div></div>
+    </div>
   </div>
 
   <div class="prayer-box" id="prayer-box">
@@ -317,6 +341,49 @@ function getNextWeeklyDays(n) {
   return results;
 }
 
+function calcScore() {
+  let today = 0, week = 0, month = 0, year = 0, streak = 0, maxStreak = 0;
+  const now = new Date(); now.setHours(0,0,0,0);
+  const weekAgo = new Date(now); weekAgo.setDate(now.getDate()-7);
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const yearStart = new Date(now.getFullYear(), 0, 1);
+
+  // Get all localStorage keys for fasts
+  const keys = Object.keys(localStorage).filter(k => k.startsWith('fast_') && localStorage.getItem(k) === '1');
+  const doneDates = keys.map(k => {
+    const parts = k.split('_');
+    const dateStr = parts.slice(2).join('_');
+    return new Date(dateStr);
+  }).filter(d => !isNaN(d)).sort((a,b) => a-b);
+
+  doneDates.forEach(d => {
+    if(d.toDateString() === now.toDateString()) today++;
+    if(d >= weekAgo) week++;
+    if(d >= monthStart) month++;
+    if(d >= yearStart) year++;
+  });
+
+  // Calculate streak (consecutive days with at least one fast)
+  const dateSet = new Set(doneDates.map(d => d.toDateString()));
+  let cur = new Date(now);
+  while(dateSet.has(cur.toDateString())) {
+    streak++;
+    cur.setDate(cur.getDate()-1);
+  }
+
+  // Monthly goal: ~12 fasts/month (3 white days + ~8 Mon/Thu + 1 special)
+  const monthGoal = 12;
+  const pct = Math.min(100, Math.round((month/monthGoal)*100));
+
+  document.getElementById('sc-today').textContent = today;
+  document.getElementById('sc-week').textContent = week;
+  document.getElementById('sc-month').textContent = month;
+  document.getElementById('sc-year').textContent = year;
+  document.getElementById('sc-streak-val').textContent = streak + (streak===1?' day':' days');
+  document.getElementById('sc-streak-label').textContent = streak > 0 ? '🔥 Streak' : '⭐ Streak';
+  document.getElementById('sc-bar').style.width = pct + '%';
+}
+
 function renderUpcoming() {
   const list = document.getElementById('fast-list');
   list.innerHTML = '';
@@ -516,6 +583,7 @@ function toggleFast(el, key) {
   const checked = el.classList.toggle('checked');
   card.classList.toggle('done', checked);
   localStorage.setItem(key, checked ? '1' : '0');
+  calcScore();
 }
 
 function retryLocation() {
@@ -531,6 +599,7 @@ setInterval(() => {
 }, 60000);
 
 renderUpcoming();
+calcScore();
 </script>
 </body>
 </html>
