@@ -81,11 +81,11 @@
   /* ── Dashboard / score+prayer widget ── */
   .dashboard-box { display: flex; gap: 10px; margin-bottom: .75rem; align-items: stretch; }
   @media (max-width: 680px) {
-    .dashboard-box { flex-direction: column; }
-    .dashboard-left { flex: none; width: 100% !important; }
+    .dashboard-box { flex-direction: column; align-items: stretch; }
+    .dashboard-left { flex: none; width: 100% !important; height: auto !important; }
   }
   /* Score card */
-  .dashboard-left { background: #1a7a52; border-radius: var(--border-radius-lg); padding: .75rem; color: white; flex: 0 0 240px; display: flex; flex-direction: column; gap: 8px; overflow: hidden; }
+  .dashboard-left { background: #1a7a52; border-radius: var(--border-radius-lg); padding: .75rem; color: white; flex: 0 0 240px; display: inline-flex; flex-direction: column; gap: 8px; overflow: hidden; align-self: flex-start; }
   .dash-score-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
   .dash-score-moon { font-size: 14px; }
   .dash-score-title { font-size: 11px; font-weight: 600; opacity: .85; }
