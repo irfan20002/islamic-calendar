@@ -1046,14 +1046,28 @@ function loadPrayers(lat, lon, city) {
   const dd = String(today.getDate()).padStart(2,'0');
   const mm = String(today.getMonth()+1).padStart(2,'0');
   const yyyy = today.getFullYear();
-  fetch(`https://api.aladhan.com/v1/timings/${dd}-${mm}-${yyyy}?latitude=${lat}&longitude=${lon}&method=2`)
-    .then(r => r.json())
+  const timestamp = Math.floor(today.getTime() / 1000);
+  // Try primary endpoint first, fall back to timestamp-based endpoint
+  const url1 = `https://api.aladhan.com/v1/timings/${dd}-${mm}-${yyyy}?latitude=${lat}&longitude=${lon}&method=2`;
+  const url2 = `https://api.aladhan.com/v1/timings/${timestamp}?latitude=${lat}&longitude=${lon}&method=2`;
+  const tryFetch = (url) => fetch(url, { mode: 'cors', cache: 'no-store' }).then(r => { if(!r.ok) throw new Error(r.status); return r.json(); });
+  tryFetch(url1)
+    .catch(() => tryFetch(url2))
     .then(data => {
-      if(data.code === 200) renderPrayers(data.data.timings, city);
+      if(data && data.code === 200) renderPrayers(data.data.timings, city);
       else document.getElementById('prayer-box').innerHTML = '<div class="prayer-error">Could not load prayer times.</div>';
     })
-    .catch(() => {
-      document.getElementById('prayer-box').innerHTML = '<div class="prayer-error">Could not load prayer times. Check your connection.</div>';
+    .catch(err => {
+      // Final fallback: try the API without date (current time)
+      fetch(`https://api.aladhan.com/v1/timings?latitude=${lat}&longitude=${lon}&method=2`, { mode: 'cors' })
+        .then(r => r.json())
+        .then(data => {
+          if(data && data.code === 200) renderPrayers(data.data.timings, city);
+          else document.getElementById('prayer-box').innerHTML = '<div class="prayer-error">Prayer times unavailable. Try refreshing.</div>';
+        })
+        .catch(() => {
+          document.getElementById('prayer-box').innerHTML = '<div class="prayer-error">Could not reach prayer time server. Check connection.</div>';
+        });
     });
 }
 
@@ -1064,14 +1078,22 @@ function initPrayers() {
   }
   navigator.geolocation.getCurrentPosition(pos => {
     const { latitude: lat, longitude: lon } = pos.coords;
-    // Reverse geocode city name
-    fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`)
+    // Load prayers immediately so mobile never hangs waiting for reverse geocode
+    loadPrayers(lat, lon, 'Your location');
+    // Try to get city name in background (with timeout)
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 5000);
+    fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`, { signal: ctrl.signal })
       .then(r => r.json())
       .then(geo => {
-        const city = geo.address.city || geo.address.town || geo.address.village || 'Your location';
-        loadPrayers(lat, lon, city);
+        clearTimeout(t);
+        const city = geo.address.city || geo.address.town || geo.address.village || null;
+        if (city) {
+          const loc = document.querySelector('.prayer-location');
+          if (loc) loc.innerHTML = '<i class="ti ti-map-pin" style="font-size:10px" aria-hidden="true"></i> ' + city;
+        }
       })
-      .catch(() => loadPrayers(lat, lon, `${lat.toFixed(2)}, ${lon.toFixed(2)}`));
+      .catch(() => clearTimeout(t));
   }, err => {
     // Fall back to Houston if geolocation fails or is denied
     loadPrayers(29.7604, -95.3698, 'Houston');
@@ -1112,6 +1134,11 @@ function retryLocation() {
 }
 
 initPrayers();
+// If prayer times fail on first load, retry after 3 seconds (handles slow mobile network startup)
+setTimeout(() => {
+  const box = document.getElementById('prayer-box');
+  if(box.querySelector('.prayer-error')) initPrayers();
+}, 3000);
 // Refresh prayer times every minute for live countdown
 setInterval(() => {
   const box = document.getElementById('prayer-box');
