@@ -33,9 +33,9 @@
     }
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: var(--font-sans); background: var(--color-background-secondary); color: var(--color-text-primary); min-height: 100vh; display: flex; justify-content: center; padding: 2rem 1rem; }
+  body { font-family: var(--font-sans); background: var(--color-background-secondary); color: var(--color-text-primary); min-height: 100vh; display: flex; justify-content: center; padding: .5rem .5rem; }
   .container { width: 100%; max-width: 640px; }
-  .app { padding: 1.5rem; background: var(--color-background-primary); border-radius: var(--border-radius-lg); border: 0.5px solid var(--color-border-tertiary); }
+  .app { padding: 1rem; background: var(--color-background-primary); border-radius: var(--border-radius-lg); border: 0.5px solid var(--color-border-tertiary); }
   .header { display: flex; flex-direction: row; align-items: flex-start; justify-content: space-between; margin-bottom: 1.5rem; }
   .header h1 { font-size: 17px; font-weight: 500; white-space: nowrap; }
   .header p { font-size: 13px; color: var(--color-text-secondary); margin-top: 2px; }
@@ -161,31 +161,32 @@
 <div class="container">
 <div class="app">
   <h2 class="sr-only">Islamic fasting calendar — auto-updating</h2>
-  <div class="header" style="background: linear-gradient(135deg, #c8860a 0%, #e8a800 25%, #ffe033 50%, #e8a800 75%, #c8860a 100%); border-radius: var(--border-radius-lg); padding: .875rem 1.25rem; margin-bottom: 1.25rem; display:flex; align-items:center; justify-content:space-between; gap:8px;">
-    <!-- Left: title + name -->
-    <div style="flex:0 0 auto">
-      <h1 style="color:#fff;font-size:22px;font-weight:700;text-shadow:0 1px 3px rgba(0,0,0,0.3);">Islamic fasting calendar</h1>
-      <p style="color:#0f5c2e;font-size:14px;font-weight:600;margin-top:2px;">Irfan Bandey</p>
+  <div class="header" style="background: linear-gradient(135deg, #c8860a 0%, #e8a800 25%, #ffe033 50%, #e8a800 75%, #c8860a 100%); border-radius: var(--border-radius-lg); padding: .5rem 1rem .6rem; margin-bottom: 1rem; display:flex; align-items:flex-start; justify-content:space-between; gap:8px; overflow:hidden;">
+    <!-- Left: title + name + countdown -->
+    <div style="flex:1;min-width:0">
+      <h1 style="color:#fff;font-size:18px;font-weight:700;text-shadow:0 1px 3px rgba(0,0,0,0.3);">Islamic fasting calendar</h1>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:2px;flex-wrap:nowrap">
+        <p style="color:#0f5c2e;font-size:13px;font-weight:600;margin:0;white-space:nowrap">Irfan Bandey</p>
+        <div id="fast-countdown-wrap" style="flex:1;min-width:0"></div>
+      </div>
     </div>
-    <!-- Center: countdown (hidden when not fasting) -->
-    <div id="fast-countdown-wrap" style="flex:1;text-align:center"></div>
     <!-- Right: moon + stars + simulate -->
     <div style="flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-end;gap:4px">
-      <div style="position:relative;width:52px;height:38px;display:flex;align-items:center;justify-content:center">
-        <svg style="position:absolute;top:0;left:0;width:100%;height:100%;overflow:visible;pointer-events:none" viewBox="0 0 52 38">
+      <div style="position:relative;width:48px;height:36px;display:flex;align-items:center;justify-content:center">
+        <svg style="position:absolute;top:0;left:0;width:100%;height:100%;overflow:visible;pointer-events:none" viewBox="0 0 48 36">
           <g class="star-twinkle" style="animation-delay:0s">
             <polygon points="5,0 6.5,3.5 10,3.5 7.2,5.8 8.2,9.5 5,7.2 1.8,9.5 2.8,5.8 0,3.5 3.5,3.5" fill="white" transform="translate(1,1)"/>
           </g>
           <g class="star-twinkle" style="animation-delay:0.8s">
-            <polygon points="4,0 5.2,2.8 8,2.8 5.8,4.6 6.6,7.5 4,5.8 1.4,7.5 2.2,4.6 0,2.8 2.8,2.8" fill="white" transform="translate(40,1)"/>
+            <polygon points="4,0 5.2,2.8 8,2.8 5.8,4.6 6.6,7.5 4,5.8 1.4,7.5 2.2,4.6 0,2.8 2.8,2.8" fill="white" transform="translate(36,1)"/>
           </g>
           <g class="star-twinkle" style="animation-delay:1.4s">
-            <polygon points="3.5,0 4.5,2.5 7,2.5 5,4 5.8,6.5 3.5,5 1.2,6.5 2,4 0,2.5 2.5,2.5" fill="white" transform="translate(2,24)"/>
+            <polygon points="3.5,0 4.5,2.5 7,2.5 5,4 5.8,6.5 3.5,5 1.2,6.5 2,4 0,2.5 2.5,2.5" fill="white" transform="translate(1,22)"/>
           </g>
         </svg>
-        <svg id="moon-phase-svg" width="30" height="30" viewBox="0 0 28 28" aria-label="Current moon phase" role="img" style="position:relative;z-index:1"></svg>
+        <svg id="moon-phase-svg" width="28" height="28" viewBox="0 0 28 28" aria-label="Current moon phase" role="img" style="position:relative;z-index:1"></svg>
       </div>
-      <button onclick="toggleSimulation()" id="sim-btn" style="font-family:var(--font-sans);font-size:9px;padding:2px 8px;border-radius:20px;border:1px solid rgba(255,255,255,0.4);background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.9);cursor:pointer">▶ Simulate</button>
+      <button onclick="toggleSimulation()" id="sim-btn" style="font-family:var(--font-sans);font-size:9px;padding:2px 7px;border-radius:20px;border:1px solid rgba(255,255,255,0.4);background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.9);cursor:pointer;white-space:nowrap">▶ Sim</button>
     </div>
   </div>
 
@@ -1196,12 +1197,10 @@ function updateCountdownBanner() {
   const mm = String(m).padStart(2,'0');
   const ss = String(s).padStart(2,'0');
 
-  wrap.innerHTML = `<div style="display:inline-flex;flex-direction:column;align-items:center;gap:1px">
-    <div style="display:flex;align-items:center;gap:5px">
-      <span style="font-size:14px">${icon}</span>
-      <span style="font-size:10px;font-weight:600;color:#0a3d1f;text-transform:uppercase;letter-spacing:.07em">${label} in</span>
-    </div>
-    <span style="font-size:22px;font-weight:700;color:#0f5c2e;font-variant-numeric:tabular-nums;line-height:1">${hh}:${mm}:${ss}</span>
+  wrap.innerHTML = `<div style="display:flex;align-items:center;gap:5px;margin-top:3px">
+    <span style="font-size:12px">${icon}</span>
+    <span style="font-size:10px;font-weight:600;color:#0a3d1f;text-transform:uppercase;letter-spacing:.05em">${label} in</span>
+    <span style="font-size:16px;font-weight:700;color:#0f5c2e;font-variant-numeric:tabular-nums;line-height:1">${hh}:${mm}:${ss}</span>
   </div>`;
 }
 
