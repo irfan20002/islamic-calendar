@@ -1074,19 +1074,9 @@ function initPrayers() {
         loadPrayers(lat, lon, city);
       })
       .catch(() => loadPrayers(lat, lon, `${lat.toFixed(2)}, ${lon.toFixed(2)}`));
-  }, () => {
-    // If running in Electron (Mac app), fall back to Houston
-    const isElectron = navigator.userAgent.toLowerCase().includes('electron');
-    if(isElectron) {
-      loadPrayers(29.7604, -95.3698, 'Houston');
-    } else {
-      const errCodes = {1:'PERMISSION_DENIED', 2:'POSITION_UNAVAILABLE', 3:'TIMEOUT'};
-    document.getElementById('prayer-box').innerHTML = `
-      <div class="prayer-error">Location error — code: <strong>${err.code} (${errCodes[err.code]||'UNKNOWN'})</strong><br>${err.message||''}</div>
-      <div style="text-align:center;margin-top:.75rem">
-        <button onclick="retryLocation()" style="font-family:var(--font-sans);font-size:13px;padding:6px 16px;border-radius:20px;border:1px solid #1D9E75;background:#E1F5EE;color:#085041;cursor:pointer">Retry location</button>
-      </div>`;
-    }
+  }, err => {
+    // Fall back to Houston if geolocation fails
+    loadPrayers(29.7604, -95.3698, 'Houston');
   });
 }
 
