@@ -1229,16 +1229,14 @@ function updateCountdownBanner() {
 }
 
 // ── PWA Service Worker registration ─────────────────────────────
+// Unregister any previously cached service workers to avoid stale cache issues
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('service-worker.js')
-      .then(reg => {
-        console.log('SW registered:', reg.scope);
-        updateNotifIcon();
-      })
-      .catch(err => console.warn('SW registration failed:', err));
+  navigator.serviceWorker.getRegistrations().then(regs => {
+    regs.forEach(reg => reg.unregister());
   });
-}
+  window.addEventListener('load', () => {
+    updateNotifIcon();
+  });
 
 // ── Notification permission ──────────────────────────────────────
 function updateNotifIcon() {
