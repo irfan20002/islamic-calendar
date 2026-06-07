@@ -184,7 +184,6 @@
         </svg>
         <svg id="moon-phase-svg" width="28" height="28" viewBox="0 0 28 28" aria-label="Current moon phase" role="img" style="position:relative;z-index:1"></svg>
       </div>
-      <button onclick="toggleSimulation()" id="sim-btn" style="font-family:var(--font-sans);font-size:9px;padding:2px 7px;border-radius:20px;border:1px solid rgba(255,255,255,0.4);background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.9);cursor:pointer;white-space:nowrap">▶ Sim</button>
     </div>
   </div>
 
@@ -1187,31 +1186,7 @@ calcScore();
 let _prayerTimes = null;
 let _countdownInterval = null;
 
-// ── Simulation mode ──────────────────────────────────────────────
-let _simActive = false;
-
-function toggleSimulation() {
-  _simActive = !_simActive;
-  const btn = document.getElementById('sim-btn');
-  if (_simActive) {
-    btn.textContent = '⏹ Stop';
-    btn.style.color = '#fff';
-    btn.style.borderColor = 'rgba(255,255,255,0.6)';
-    btn.style.background = 'rgba(0,0,0,0.2)';
-    updateCountdownBanner();
-    if (_countdownInterval) clearInterval(_countdownInterval);
-    _countdownInterval = setInterval(updateCountdownBanner, 1000);
-  } else {
-    btn.textContent = '▶ Simulate';
-    btn.style.color = 'rgba(255,255,255,0.85)';
-    btn.style.borderColor = 'rgba(255,255,255,0.4)';
-    btn.style.background = 'rgba(255,255,255,0.15)';
-    updateCountdownBanner();
-  }
-}
-
 function isFastingToday() {
-  if (_simActive) return true;
   const fastDates = allFastDates();
   return fastDates.has(TODAY.toDateString());
 }
