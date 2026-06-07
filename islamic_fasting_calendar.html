@@ -1041,7 +1041,78 @@ function renderPrayers(times, city) {
   }
 }
 
+function calcPrayerTimesLocal(lat, lon) {
+  // Standalone prayer time calculation — no API needed
+  // Based on ISNA method (angle 15/15), similar to AlAdhan method=2
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+
+  function julianDay(y, m, d) {
+    if (m <= 2) { y -= 1; m += 12; }
+    const A = Math.floor(y / 100);
+    const B = 2 - A + Math.floor(A / 4);
+    return Math.floor(365.25 * (y + 4716)) + Math.floor(30.6001 * (m + 1)) + d + B - 1524.5;
+  }
+
+  function sunPosition(jd) {
+    const D = jd - 2451545.0;
+    const g = (357.529 + 0.98560028 * D) % 360;
+    const q = (280.459 + 0.98564736 * D) % 360;
+    const L = (q + 1.915 * Math.sin(g * Math.PI/180) + 0.020 * Math.sin(2 * g * Math.PI/180)) % 360;
+    const e = 23.439 - 0.00000036 * D;
+    const RA = Math.atan2(Math.cos(e * Math.PI/180) * Math.sin(L * Math.PI/180), Math.cos(L * Math.PI/180)) * 180/Math.PI / 15;
+    const dec = Math.asin(Math.sin(e * Math.PI/180) * Math.sin(L * Math.PI/180)) * 180/Math.PI;
+    const EqT = q/15 - ((RA + 360) % 24);
+    return { dec, EqT };
+  }
+
+  function toHHMM(hours) {
+    const h = Math.floor(hours) % 24;
+    const m = Math.floor((hours - Math.floor(hours)) * 60);
+    return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+  }
+
+  function hourAngle(angle, lat, dec) {
+    const num = -Math.sin(angle * Math.PI/180) - Math.sin(lat * Math.PI/180) * Math.sin(dec * Math.PI/180);
+    const den = Math.cos(lat * Math.PI/180) * Math.cos(dec * Math.PI/180);
+    const val = num / den;
+    if (val < -1 || val > 1) return null;
+    return Math.acos(val) * 180/Math.PI / 15;
+  }
+
+  const jd = julianDay(year, month, day);
+  const { dec, EqT } = sunPosition(jd);
+  const tz = -date.getTimezoneOffset() / 60;
+  const noon = 12 - EqT - lon/15 + tz;
+
+  const fajrHA   = hourAngle(-15, lat, dec);
+  const sunriseHA = hourAngle(-0.833, lat, dec);
+  const asrHA    = (function() {
+    // Shafi shadow factor = 1
+    const target = Math.atan(1 + Math.tan(Math.abs(lat - dec) * Math.PI/180)) * 180/Math.PI;
+    return hourAngle(-target, lat, dec);
+  })();
+  const maghribHA = hourAngle(-0.833, lat, dec);
+  const ishaHA   = hourAngle(-15, lat, dec);
+
+  return {
+    Fajr:    toHHMM(noon - fajrHA),
+    Sunrise: toHHMM(noon - sunriseHA),
+    Dhuhr:   toHHMM(noon + 0.033),
+    Asr:     toHHMM(noon + asrHA),
+    Maghrib: toHHMM(noon + maghribHA),
+    Isha:    toHHMM(noon + ishaHA),
+  };
+}
+
 function loadPrayers(lat, lon, city) {
+  // Calculate locally first (instant, no network)
+  const timings = calcPrayerTimesLocal(lat, lon);
+  renderPrayers(timings, city);
+
+  // Also try API in background to get more precise times
   const today = new Date();
   const dd = String(today.getDate()).padStart(2,'0');
   const mm = String(today.getMonth()+1).padStart(2,'0');
@@ -1050,11 +1121,8 @@ function loadPrayers(lat, lon, city) {
     .then(r => r.json())
     .then(data => {
       if(data.code === 200) renderPrayers(data.data.timings, city);
-      else document.getElementById('prayer-box').innerHTML = '<div class="prayer-error">Could not load prayer times.</div>';
     })
-    .catch(() => {
-      document.getElementById('prayer-box').innerHTML = '<div class="prayer-error">Could not load prayer times. Check your connection.</div>';
-    });
+    .catch(() => {}); // silently ignore — local times already shown
 }
 
 function initPrayers() {
@@ -1067,8 +1135,7 @@ function initPrayers() {
     // Call loadPrayers immediately — don't wait for reverse geocode
     loadPrayers(lat, lon, 'Your location');
   }, err => {
-    // Fall back to Houston if geolocation fails or is denied
-    loadPrayers(29.7604, -95.3698, 'Houston');
+    document.getElementById('prayer-box').innerHTML = '<div class="prayer-error">Please allow location access to see prayer times.</div>';
   }, { timeout: 8000, maximumAge: 600000 });
 }
 
