@@ -1,6 +1,21 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<!-- Google Analytics -->
+<script>
+  // Use correct GA ID based on which repo is running
+  var GA_ID = window.location.hostname.includes('islamic-calendar-test') || window.location.pathname.includes('islamic-calendar-test')
+    ? 'G-NGPYYG4T9D'   // Test
+    : 'G-7TEVD3ET2Z';  // Live
+  var s = document.createElement('script');
+  s.async = true;
+  s.src = 'https://www.googletagmanager.com/gtag/js?id=' + GA_ID;
+  document.head.appendChild(s);
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', GA_ID);
+</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#c8860a">
@@ -33,7 +48,7 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: var(--font-sans); background: var(--color-background-secondary); color: var(--color-text-primary); min-height: 100vh; display: flex; justify-content: center; padding: .5rem .5rem; }
   .container { width: 100%; max-width: 640px; }
-  .app { padding: 1rem; background: var(--color-background-primary); border-radius: var(--border-radius-lg); border: 0.5px solid var(--color-border-tertiary); }
+  .app { padding: 0.6rem; background: var(--color-background-primary); border-radius: var(--border-radius-lg); border: 0.5px solid var(--color-border-tertiary); }
   .header h1 + p { margin-top: 2px; } /* layout is inline on the element */
   .header h1 { font-size: 17px; font-weight: 500; white-space: nowrap; } /* used for sr-only h2 sibling */
   @keyframes flash-alert {
@@ -54,6 +69,9 @@
   }
   .rainbow-title { animation: rainbow 5s linear infinite; position: relative; display: inline-block; }
   .glitter-wrap { position: relative; display: inline-block; overflow: hidden; }
+  .hijri-gold { animation: rainbow 5s linear infinite; font-weight: 700; background: linear-gradient(135deg,#f5c200 0%,#ffe033 50%,#f0b800 100%) !important; padding: 4px 14px; border-radius: 20px; display: inline-block; box-shadow: 0 2px 6px rgba(180,130,0,0.25); }
+  .hijri-green { font-weight: 700; background: #1D9E75 !important; color: #ffffff !important; padding: 4px 14px; border-radius: 20px; display: inline-block; box-shadow: 0 2px 4px rgba(0,100,60,0.2); animation: none; }
+
   @keyframes sparkle {
     0%   { opacity: 0; transform: scale(0) rotate(0deg); }
     50%  { opacity: 1; transform: scale(1) rotate(180deg); }
@@ -65,25 +83,71 @@
     animation: sparkle linear infinite;
   }
   .header p { font-size: 13px; color: var(--color-text-secondary); margin-top: 2px; }
-  .tabs { display: flex; gap: 8px; margin-bottom: 1.5rem; border-bottom: 0.5px solid var(--color-border-tertiary); }
+  .tabs { display: flex; gap: 8px; margin-bottom: 0.75rem; border-bottom: 0.5px solid var(--color-border-tertiary); }
   .tab { font-size: 15px; font-weight: 500; padding: 7px 16px; border: none; background: none; color: var(--color-text-secondary); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -0.5px; font-family: var(--font-sans); border-radius: 8px 8px 0 0; transition: all 0.15s; }
   .tab.active { color: #fff; background: #1D9E75; border-bottom: 2px solid #1D9E75; }
   .tab[data-tab="calendar"].active { background: #2E86C1; border-bottom-color: #2E86C1; }
   .tab[data-tab="guide"].active { background: #8E44AD; border-bottom-color: #8E44AD; }
   .tab:hover:not(.active) { color: var(--color-text-primary); background: var(--color-background-secondary); }
   .section { margin-bottom: 1.5rem; }
-  .section-title { font-size: 13px; font-weight: 500; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: .05em; margin-bottom: .75rem; }
+  .section-title { font-size: 15px; font-weight: 700; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: .05em; margin-bottom: .75rem; }
+  .section-title-rainbow { animation: rainbow 5s linear infinite; }
+  .allah-name { font-size: 14px; font-weight: 600; animation: rainbow 5s linear infinite; text-align: right; flex: 1; }
   .fast-card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: .875rem 1rem; margin-bottom: .5rem; display: flex; align-items: center; gap: 12px; }
   .fast-card.next { border-left: 3px solid #1D9E75; }
+  .fast-card.today-fast {
+    position: relative; overflow: hidden;
+    border: 2px solid #D4AF37 !important;
+  }
+  .fast-card.today-fast .fast-name { color: #7a5c00; font-weight: 700; }
+  .sparkle-canvas {
+    position: absolute; top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none; z-index: 0;
+  }
+  .fast-card.today-fast .fast-check,
+  .fast-card.today-fast .fast-icon,
+  .fast-card.today-fast .fast-info,
+  .fast-card.today-fast .countdown { position: relative; z-index: 1; }
+  .today-reminder-row {
+    display:none !important;
+    position: absolute; top: 0; left: 44%; right: 85px; bottom: 0;
+    display: flex; align-items: center; justify-content: center;
+    text-align: center;
+    font-size: 13px; color: #0e9e8a;
+    font-style: italic; font-weight: 700;
+    pointer-events: none; z-index: 2;
+    text-shadow: 0 0 10px rgba(255,255,255,0.95), 0 0 4px rgba(255,255,255,1);
+    animation: reminderFade 4s ease-in-out infinite;
+  }
+  @keyframes reminderFade {
+    0%,100% { opacity: 0; }
+    15%,80%  { opacity: 1; }
+  }
   .fast-card.done { opacity: 0.5; }
   .fast-card.done .fast-name { text-decoration: line-through; }
   .fast-check { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #1D9E75; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: all 0.2s; }
   .fast-check.checked { background: #1D9E75; border-color: #1D9E75; }
+  .fast-check.future { border-color: var(--color-border-tertiary); opacity: 0.35; cursor: not-allowed; }
   .fast-check.checked::after { content: '✓'; color: white; font-size: 13px; font-weight: bold; }
   .fast-icon { width: 36px; height: 36px; border-radius: var(--border-radius-md); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
   .fast-icon i { font-size: 18px; }
   .fast-info { flex: 1; }
   .fast-name { font-size: 14px; font-weight: 500; }
+  .fast-title-row{display:flex;align-items:center;gap:8px;}
+  .today-reminder-inline{
+    position:absolute;
+    top:-4px;
+    left:calc(50% + 20px);
+    right:110px;
+    font-size:12px;
+    color:#0e9e8a;
+    font-style:italic;
+    font-weight:700;
+    white-space:nowrap;
+    text-align:center;
+    pointer-events:none;
+  }
   .fast-date { font-size: 12px; color: var(--color-text-secondary); margin-top: 2px; }
   .fast-hijri { font-size: 11px; color: var(--color-text-tertiary); margin-top: 1px; }
   .countdown { font-size: 12px; font-weight: 500; padding: 3px 8px; border-radius: 20px; white-space: nowrap; flex-shrink: 0; }
@@ -99,6 +163,7 @@
   .day .greg { font-size: 12px; line-height: 1; }
   .day .hijri-d { font-size: 9px; line-height: 1; opacity: 0.65; }
   .day.fast { background: #E1F5EE; color: #085041; }
+  .day.fasted { background: #1a7a52; color: #ffffff; font-weight: 500; }
   .day.fast-today { background: #5DCAA5; color: #04342C; font-weight: 500; }
   .day.weekly { border: 1px dashed #5DCAA5; }
   .day.today { background: var(--color-background-secondary); border: 1.5px solid #1D9E75; color: var(--color-text-primary); font-weight: 500; }
@@ -126,7 +191,7 @@
   }
   .tree-sway { display: inline-block; animation: sway 3s ease-in-out infinite; transform-origin: bottom center; }
   /* ── Dashboard / score+prayer widget ── */
-  .dashboard-box { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: .75rem; position: relative; overflow: hidden; border-radius: var(--border-radius-lg); }
+  .dashboard-box { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: .4rem; position: relative; overflow: hidden; border-radius: var(--border-radius-lg); }
   @keyframes shoot-ltr {
     0%   { transform: translateX(-150px); opacity: 1; }
     100% { transform: translateX(120vw); opacity: 0; }
@@ -152,10 +217,10 @@
   .dash-header-title { font-size: 13px; font-weight: 600; opacity: .9; }
   .dash-tiles { display: grid; grid-template-columns: 1fr 1px 1fr 1px 1fr 1px 1fr; gap: 0; align-items: start; }
   .dash-tile-divider { background: rgba(80,40,0,.15); align-self: stretch; margin: 0 2px; }
-  .dash-tile { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 0 2px; }
-  .dash-tile-label { font-size: 13px; font-weight: 600; color: #5c2d00; text-align: center; line-height: 1.2; height: 24px; display: flex; align-items: center; justify-content: center; }
-  .dash-tile-tree { font-size: 54px; line-height: 1; display: flex; align-items: center; justify-content: center; height: 64px; min-height: 64px; }
-  .dash-tile-num { font-size: 24px; font-weight: 700; line-height: 1; }
+  .dash-tile { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 0 2px; }
+  .dash-tile-label { font-size: 11px; font-weight: 600; color: #5c2d00; text-align: center; line-height: 1.2; height: 18px; display: flex; align-items: center; justify-content: center; }
+  .dash-tile-tree { font-size: 30px; line-height: 1; display: flex; align-items: center; justify-content: center; height: 36px; min-height: 36px; }
+  .dash-tile-num { font-size: 18px; font-weight: 700; line-height: 1; }
   .dash-tile-bar-wrap { width: 100%; margin-top: 4px; position: relative; }
   .dash-tile-bar-fill { height: 100%; border-radius: 99px; transition: width 0.4s ease; }
   .dash-tile-bar-base { background: #ffffff; border: 1.5px solid rgba(80,40,0,.3); }
@@ -171,16 +236,13 @@
 <div class="container">
 <div class="app">
   <h2 class="sr-only">Islamic fasting calendar — auto-updating</h2>
-  <div class="header" style="background: linear-gradient(135deg, #f5c200 0%, #ffe033 50%, #f0b800 100%); border-radius: var(--border-radius-lg); padding: .5rem 1rem .6rem; margin-bottom: 1rem; display:flex; align-items:flex-start; justify-content:space-between; gap:8px; overflow:hidden;">
+  <div class="header" style="background: linear-gradient(135deg, #f5c200 0%, #ffe033 50%, #f0b800 100%); border-radius: var(--border-radius-lg); padding: .5rem 1rem .6rem; margin-bottom: 0.4rem; display:flex; align-items:flex-start; justify-content:space-between; gap:8px; overflow:hidden;">
     <!-- Left: title + name + countdown -->
     <div style="flex:1;min-width:0">
       <div class="glitter-wrap" id="glitter-wrap">
-        <h1 class="rainbow-title" id="rainbow-title" style="font-size:18px;font-weight:700;text-shadow:0 1px 3px rgba(0,0,0,0.3);">Islamic fasting calendar</h1>
+        <h1 class="rainbow-title" id="rainbow-title" style="font-size:18px;font-weight:700;text-shadow:0 1px 3px rgba(0,0,0,0.3);">Islamic fasting calendar <span style="color:#0f5c2e;font-size:13px;font-weight:600;">(Irfan Bandey)</span></h1>
       </div>
-      <div style="display:flex;align-items:center;gap:8px;margin-top:2px;flex-wrap:nowrap">
-        <p style="color:#0f5c2e;font-size:13px;font-weight:600;margin:0;white-space:nowrap">Irfan Bandey</p>
-        <div id="fast-countdown-wrap" style="flex:1;min-width:0"></div>
-      </div>
+      <div id="fast-countdown-wrap" style="margin-top:4px;text-align:center;width:100%"></div>
     </div>
     <!-- Right: moon + stars -->
     <div style="flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-end;gap:4px">
@@ -207,6 +269,14 @@
       <div class="dash-header">
         <span style="font-size:16px">🌙</span>
         <span class="dash-header-title">Fasting Tracker</span>
+        <div style="display:flex;align-items:center;gap:2px;margin-left:4px">
+          <button onclick="adjustHijri(-1)" style="font-family:var(--font-sans);font-size:11px;padding:1px 5px;border-radius:20px;border:1px solid var(--color-border-tertiary);background:var(--color-background-secondary);color:var(--color-text-secondary);cursor:pointer">◀</button>
+          <span id="hijri-offset-label" style="font-size:10px;color:#1D9E75;min-width:20px;text-align:center;font-weight:600"></span>
+          <button onclick="adjustHijri(1)" style="font-family:var(--font-sans);font-size:11px;padding:1px 5px;border-radius:20px;border:1px solid var(--color-border-tertiary);background:var(--color-background-secondary);color:var(--color-text-secondary);cursor:pointer">▶</button>
+        </div>
+        <button id="notif-btn" onclick="requestNotifPermission()" title="Enable notifications" style="font-family:var(--font-sans);background:none;border:none;cursor:pointer;flex-shrink:0;padding:2px;margin-left:4px">
+          <i class="ti ti-bell" id="notif-icon" style="font-size:18px;color:var(--color-text-tertiary)"></i>
+        </button>
       </div>
       <div class="dash-tiles">
         <!-- Prev month -->
@@ -252,6 +322,8 @@
     </div>
   </div>
 
+  <div style="height:1.5rem"></div>
+
   <div class="tabs">
     <button class="tab active" data-tab="upcoming" onclick="showTab('upcoming')">Upcoming fasts</button>
     <button class="tab" data-tab="calendar" onclick="showTab('calendar')">Calendar</button>
@@ -260,8 +332,11 @@
 
   <div id="tab-upcoming">
     <div class="section">
-      <div class="section-title">Next fasts</div>
-      <div id="fast-list"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
+        <div class="section-title section-title-rainbow" style="margin-bottom:0">Next fasts</div>
+        <div id="allah-name-display" class="allah-name"></div>
+      </div>
+      <div style="max-height:420px;overflow-y:auto;scroll-behavior:smooth" id="fast-list-scroll"><div id="fast-list"></div></div>
     </div>
     <div class="section">
       <div class="section-title">Weekly sunnah</div>
@@ -324,9 +399,14 @@
   <div style="display:flex;align-items:center;gap:10px;background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:.625rem .875rem;margin-top:.75rem">
     <span style="font-size:18px;background:#1a5c3a;color:white;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:700">"</span>
     <span style="font-size:12px;color:var(--color-text-secondary);flex:1;line-height:1.5">"Whoever fasts in Ramadan out of faith and seeking reward, his past sins will be forgiven." <em style="color:var(--color-text-tertiary)">[Bukhari &amp; Muslim]</em></span>
-    <button id="notif-btn" onclick="requestNotifPermission()" title="Enable notifications" style="font-family:var(--font-sans);background:none;border:none;cursor:pointer;flex-shrink:0;padding:2px">
-      <i class="ti ti-bell" id="notif-icon" style="font-size:20px;color:var(--color-text-tertiary)"></i>
+    <button onclick="exportFastingData()" title="Export fasting data" style="font-family:var(--font-sans);background:none;border:none;cursor:pointer;flex-shrink:0;padding:2px">
+      <i class="ti ti-download" style="font-size:20px;color:var(--color-text-tertiary)"></i>
     </button>
+    <label title="Import fasting data" style="cursor:pointer;flex-shrink:0;padding:2px;margin:0">
+      <i class="ti ti-upload" style="font-size:20px;color:var(--color-text-tertiary)"></i>
+      <input type="file" accept=".json" onchange="importFastingData(event)" style="display:none">
+    </label>
+
   </div>
 
 </div><!-- /app -->
@@ -338,6 +418,8 @@ let _prayerTimes = null;
 let _parsedPrayerTimes = null;
 let _countdownInterval = null;
 let _flashInterval = null;
+let _fajrWarnToggle = false;
+let _fajrWarnInterval = null;
 let _lastNextPrayerIdx = -1;
 
 // Dynamic today — always returns midnight of the current day
@@ -360,8 +442,8 @@ function renderMoonPhaseSVG(date) {
   const svg = document.getElementById('moon-phase-svg');
   if (!svg) return;
   const R = 12, cx = 14, cy = 14;
-  const lit  = '#ffffff';
-  const dark = 'rgba(255,255,255,0.15)';
+  const lit  = '#C8C8C8';
+  const dark = 'rgba(180,180,180,0.15)';
 
   if (phase < 0.02 || phase > 0.98) {
     svg.innerHTML = `<circle cx="${cx}" cy="${cy}" r="${R}" fill="rgba(255,255,255,0.2)"/>`;
@@ -369,7 +451,7 @@ function renderMoonPhaseSVG(date) {
     return;
   }
   if (phase > 0.48 && phase < 0.52) {
-    svg.innerHTML = `<circle cx="${cx}" cy="${cy}" r="${R}" fill="#ffffff"/>`;
+    svg.innerHTML = `<circle cx="${cx}" cy="${cy}" r="${R}" fill="#C8C8C8"/>`;
     svg.setAttribute('aria-label', 'Full moon');
     return;
   }
@@ -406,7 +488,7 @@ renderMoonPhaseSVG(new Date());
 
 // ── Hijri calendar math ─────────────────────────────────────────────────
 const HIJRI_MONTHS       = ['Muharram','Safar','Rabi al-Awwal','Rabi al-Thani','Jumada al-Ula','Jumada al-Thani','Rajab','Shaban','Ramadan','Shawwal','Dhul Qidah','Dhul Hijjah'];
-const HIJRI_MONTHS_SHORT = ['Muh','Saf','Rab I','Rab II','Jum I','Jum II','Raj','Sha','Ram','Shaw','Qi','Hij'];
+const HIJRI_MONTHS_SHORT = ['Muh','Saf','Rab I','Rab II','Jum I','Jum II','Raj','Sha','Ram','Shaw','D.Qid','D.Hij'];
 const GREG_MONTHS        = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 function toJD(y, m, d) {
@@ -530,6 +612,12 @@ const FASTS = generateFasts(_initTodayH.year - 1, _initTodayH.year + 2);
 let hijriOffset = parseInt(localStorage.getItem('hijri_offset') || '0');
 
 function getAdjustedHijri(date) {
+  // For today's date, use API Hijri if available (correct moon sighting)
+  const d = new Date(date); d.setHours(0,0,0,0);
+  const today = getToday();
+  if (window._apiHijriDay && d.getTime() === today.getTime() && hijriOffset === 0) {
+    return { day: window._apiHijriDay, month: window._apiHijriMonth, year: window._apiHijriYear };
+  }
   const adjusted = new Date(date);
   adjusted.setDate(adjusted.getDate() + hijriOffset);
   return gToH(adjusted);
@@ -538,18 +626,19 @@ function getAdjustedHijri(date) {
 function updateHijriHeader() {
   // Update offset label in the prayer box (if rendered)
   const lbl = document.getElementById('hijri-offset-label');
-  if (lbl) lbl.textContent = hijriOffset === 0 ? '' : (hijriOffset > 0 ? `+${hijriOffset}` : `${hijriOffset}`);
+  if (lbl) lbl.textContent = hijriOffset === 0 ? '0' : (hijriOffset > 0 ? `+${hijriOffset}` : `${hijriOffset}`);
 }
 
 function adjustHijri(delta) {
   hijriOffset = Math.max(-2, Math.min(2, hijriOffset + delta));
   localStorage.setItem('hijri_offset', hijriOffset);
   updateHijriHeader();
-  const dl = document.getElementById('prayer-date-line');
-  if (dl) {
-    const h    = getAdjustedHijri(getToday());
-    const greg = getToday().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-    dl.textContent = `${h.day} ${HIJRI_MONTHS[h.month - 1]} ${h.year} · ${greg}`;
+  const dlH2 = document.getElementById('prayer-date-hijri');
+  const dlG2 = document.getElementById('prayer-date-greg');
+  if (dlH2 || dlG2) {
+    const h = getAdjustedHijri(getToday());
+    if (dlH2) dlH2.textContent = `${h.day} ${HIJRI_MONTHS[h.month - 1]} ${h.year}`;
+    if (dlG2) dlG2.textContent = getToday().toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
   }
 }
 
@@ -601,12 +690,12 @@ function treeEmojiMonth(n) {
 
 function treeEmojiYear(n) {
   if (n === 0) return '';
-  return '🌴<div style="width:32px;height:7px;background:linear-gradient(180deg,#c8a05a,#a07040);border-radius:50%;margin:-4px auto 0;opacity:0.85"></div>';
+  return '<div style="display:flex;flex-direction:column;align-items:center;line-height:1">🌴<div style="width:32px;height:7px;background:linear-gradient(180deg,#c8a05a,#a07040);border-radius:50%;margin:-4px auto 0;opacity:0.85"></div></div>';
 }
 
 function calcScore() {
   const now = getToday();
-  const todayH = gToH(now);
+  const todayH = getAdjustedHijri(now);
   const curHY  = todayH.year;
   const curHM  = todayH.month;
   const prevHM = curHM === 1 ? 12 : curHM - 1;
@@ -699,7 +788,7 @@ function renderSegmentBar(wrapId, cur, prev) {
       : '';
     wrap.innerHTML = `
       <div style="position:relative;height:10px;border-radius:99px;overflow:visible;background:#ffffff;border:2px solid rgba(80,40,0,0.35);box-shadow:0 0 4px rgba(80,40,0,0.15)">
-        <div style="display:flex;width:100%;height:100%;border-radius:99px;overflow:hidden;padding:1px">${segHTML}</div>
+        <div style="display:flex;width:100%;height:100%;border-radius:99px;overflow:hidden">${segHTML}</div>
         ${needleHTML}
       </div>
       ${pctLabel}`;
@@ -747,6 +836,27 @@ function renderUpcoming() {
   const list = document.getElementById('fast-list');
   list.innerHTML = '';
 
+  // Past weekly fasts — last 52 weeks
+  const pastWeekly = [];
+  const pw = new Date(getToday());
+  pw.setDate(pw.getDate() - 1);
+  const oneYearAgo = new Date(getToday());
+  oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+  while (pw >= oneYearAgo) {
+    const dow = pw.getDay();
+    if (dow === 1 || dow === 4) {
+      pastWeekly.push({
+        name: dow === 1 ? 'Monday fast' : 'Thursday fast',
+        dates: [new Date(pw)],
+        hijri: 'Weekly sunnah',
+        icon: 'ti-repeat',
+        note: dow === 1 ? 'Monday' : 'Thursday',
+        weekly: true
+      });
+    }
+    pw.setDate(pw.getDate() - 1);
+  }
+
   const weekly = getNextWeeklyDays(8);
   const todayDow = getToday().getDay();
   const todayWeekly = (todayDow === 1 || todayDow === 4)
@@ -754,14 +864,15 @@ function renderUpcoming() {
     : [];
 
   const todayH         = gToH(getToday());
+  const startDate      = new Date(getToday()); startDate.setFullYear(startDate.getFullYear() - 1);
   const endOfHijriYear = hToG(todayH.year + 1, 12, 29);
-  const all = [...FASTS, ...todayWeekly, ...weekly].sort((a, b) => firstDate(a) - firstDate(b));
+  const all = [...FASTS, ...pastWeekly, ...todayWeekly, ...weekly].sort((a, b) => firstDate(a) - firstDate(b));
 
   let firstUpcoming = true;
   all.forEach(f => {
     const last  = lastDate(f);
     const first = firstDate(f);
-    if (last < getToday())            return;
+    if (last < startDate)        return;  // older than 1 year ago
     if (first > endOfHijriYear)  return;
 
     const diff  = Math.ceil((first - getToday()) / 86400000);
@@ -775,7 +886,11 @@ function renderUpcoming() {
     const iconColor = isWeekly ? '#185FA5' : '#0F6E56';
 
     // FIX: use stored _prayerTimes via global reference (consistent naming)
-    const afterMag = _prayerTimes && new Date() > parseTime(_prayerTimes.Maghrib);
+    const now0 = new Date();
+    const afterMag = _prayerTimes && now0 > parseTime(_prayerTimes.Maghrib);
+    // "Tomorrow" blinking window: after Maghrib today until tomorrow's Fajr
+    const tomorrowFajrT = _prayerTimes ? parseTomorrow(_prayerTimes.Fajr) : null;
+    const inTomorrowWindow = afterMag && tomorrowFajrT && now0 < tomorrowFajrT;
     let cdClass    = diff === 0 ? (afterMag ? '' : 'cd-today') : diff === 1 ? 'cd-tomorrow' : diff <= 7 ? 'cd-soon' : diff < 0 ? '' : 'cd-future';
     let countText  = diff < 0 ? '' : diff === 0 ? (afterMag ? '' : 'Today') : diff === 1 ? 'Tomorrow' : `In ${diff} days`;
 
@@ -786,17 +901,128 @@ function renderUpcoming() {
     const isDone = localStorage.getItem(key) === '1';
     if (isDone) card.classList.add('done');
 
+    const isFuture = diff > 0;
+    // Show decoration: during today's fast OR during tomorrow's eve window
+    const isTodayFast = (diff === 0 && !afterMag) || (diff === 1 && inTomorrowWindow);
+    if (isTodayFast) card.classList.add('today-fast');
+    const REMINDERS = [
+      '🤲 May Allah accept it',
+      '📿 More Dhikr today',
+      '🙏 Extra Salah today',
+      '💛 Give charity today',
+      '🌿 More good deeds',
+      '📖 Read more Quran',
+      '🤍 Seek Allah\'s mercy',
+      '🌙 Blessed fasting day',
+      '☀️ Make today count'
+    ];
     card.innerHTML = `
-      <div class="fast-check ${isDone ? 'checked' : ''}" onclick="toggleFast(this,'${key}')"></div>
+      ${isTodayFast ? '<canvas class="sparkle-canvas"></canvas>' : ''}
+      <div class="fast-check ${isDone ? 'checked' : ''} ${isFuture ? 'future' : ''}" ${isFuture ? '' : `onclick="toggleFast(this,'${key}')"`}></div>
       <div class="fast-icon" style="background:${iconBg}"><i class="ti ${f.icon}" style="color:${iconColor}" aria-hidden="true"></i></div>
       <div class="fast-info">
-        <div class="fast-name">${f.name}</div>
+        <div class="fast-title-row">
+<div class="fast-name">${f.name}</div>
+${isTodayFast ? `<div class="today-reminder-inline" id="fast-reminder-inline">🤲 May Allah accept it</div>` : ''}
+</div>
         <div class="fast-date">${dateStr}</div>
         <div class="fast-hijri">${f.hijri} · ${f.note}</div>
       </div>
-      ${countText ? `<span class="countdown ${cdClass}">${countText}</span>` : ''}`;
+      ${countText ? `<span class="countdown ${cdClass}" style="flex-shrink:0;align-self:center;">${countText}</span>` : ''}
+`;
+    if (isTodayFast) { const rr = document.createElement('div'); rr.className='today-reminder-row'; rr.id='fast-reminder-text'; rr.textContent=REMINDERS[0]; card.appendChild(rr); }
     list.appendChild(card);
+    if (isTodayFast) {
+      let _ri = 0;
+      const _el = card.querySelector('#fast-reminder-inline');
+      if (_el) setInterval(() => {
+        _ri = (_ri + 1) % REMINDERS.length;
+        _el.style.animation = 'none'; void _el.offsetWidth;
+        _el.style.animation = 'reminderFade 4s ease-in-out infinite';
+        _el.textContent = REMINDERS[_ri];
+      }, 4000);
+      const cv = card.querySelector('.sparkle-canvas');
+      if (cv) {
+        const ctx = cv.getContext('2d');
+        cv._active = true;
+        cv.width = card.offsetWidth || 350;
+        cv.height = card.offsetHeight || 72;
+        let pts = [], frame = 0;
+        const W = cv.width, H = cv.height;
+        const spawn = () => {
+          // spawn multiple particles per call for denser trail
+          for (let i = 0; i < 3; i++) {
+            pts.push({
+              x: 0,
+              y: H * (0.05 + Math.random() * 0.9),
+              vx: W / 130 + Math.random() * W / 90,
+              vy: (Math.random() - 0.5) * 2,
+              ay: (Math.random() - 0.5) * 0.06,
+              life: 1,
+              decay: 0.003 + Math.random() * 0.003,
+              r: 2 + Math.random() * 4
+            });
+          }
+        };
+        const draw = () => {
+          ctx.clearRect(0, 0, W, H);
+          if (++frame % 2 === 0) spawn();
+          pts = pts.filter(p => {
+            p.x += p.vx; p.y += p.vy; p.vy += p.ay; p.life -= p.decay;
+            if (p.life <= 0 || p.x > W + 2 || p.y < 0 || p.y > H) return false;
+            const a = Math.max(0, p.life);
+            const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 2.5);
+            g.addColorStop(0, `rgba(255,220,0,${a})`);
+            g.addColorStop(0.5, `rgba(255,170,0,${a*0.6})`);
+            g.addColorStop(1, 'rgba(255,120,0,0)');
+            ctx.beginPath(); ctx.arc(p.x, p.y, p.r * a, 0, Math.PI*2);
+            ctx.fillStyle = g; ctx.fill();
+            if (p.r > 3) {
+              ctx.strokeStyle = `rgba(255,240,150,${a*0.9})`; ctx.lineWidth = 0.8;
+              const s = p.r * 1.4;
+              ctx.beginPath();
+              ctx.moveTo(p.x-s,p.y); ctx.lineTo(p.x+s,p.y);
+              ctx.moveTo(p.x,p.y-s); ctx.lineTo(p.x,p.y+s);
+              ctx.stroke();
+            }
+            return true;
+          });
+          if (cv._active !== false) requestAnimationFrame(draw);
+          else ctx.clearRect(0, 0, W, H);
+        };
+        draw();
+      }
+    }
   });
+
+  // Scroll to the first upcoming (today or future) fast
+  // Scroll container so today's fast is at the top
+  const nextCard = list.querySelector('.fast-card.next');
+  const scrollContainer = document.getElementById('fast-list-scroll');
+  if (nextCard && scrollContainer) {
+    setTimeout(() => {
+      const containerTop = scrollContainer.getBoundingClientRect().top;
+      const cardTop = nextCard.getBoundingClientRect().top;
+      scrollContainer.scrollTop += (cardTop - containerTop) - 8;
+    }, 200);
+
+    // Auto-snap back to today after 2.5s of scroll inactivity
+    let _snapTimer = null;
+    scrollContainer.addEventListener('scroll', () => {
+      if (_snapTimer) clearTimeout(_snapTimer);
+      _snapTimer = setTimeout(() => scrollToToday(), 2500);
+    });
+  }
+}
+
+function scrollToToday() {
+  const scrollContainer = document.getElementById('fast-list-scroll');
+  const nextCard = document.querySelector('#fast-list .fast-card.next');
+  if (nextCard && scrollContainer) {
+    const containerTop = scrollContainer.getBoundingClientRect().top;
+    const cardTop = nextCard.getBoundingClientRect().top;
+    scrollContainer.scrollTop += (cardTop - containerTop) - 8;
+  }
 }
 
 // ── Calendar view ───────────────────────────────────────────────────────
@@ -821,13 +1047,13 @@ function getIslamicDay(hMonth, hDay) {
 }
 
 function renderCalendar() {
-  const hStart = gToH(new Date(viewYear, viewMonth, 1));
-  const hEnd   = gToH(new Date(viewYear, viewMonth + 1, 0));
+  const hStart = getAdjustedHijri(new Date(viewYear, viewMonth, 1));
+  const hEnd   = getAdjustedHijri(new Date(viewYear, viewMonth + 1, 0));
 
   document.getElementById('month-title').textContent = `${GREG_MONTHS[viewMonth]} ${viewYear}`;
   const hijriRange = hStart.month === hEnd.month
-    ? `${HIJRI_MONTHS[hStart.month - 1]} ${hStart.year}`
-    : `${HIJRI_MONTHS_SHORT[hStart.month - 1]}–${HIJRI_MONTHS_SHORT[hEnd.month - 1]} ${hStart.year}${hEnd.year !== hStart.year ? ' / ' + hEnd.year : ''}`;
+    ? `${HIJRI_MONTHS[hStart.month - 1]} ${hStart.year} AH`
+    : `${HIJRI_MONTHS[hStart.month - 1]}–${HIJRI_MONTHS[hEnd.month - 1]} ${hStart.year}${hEnd.year !== hStart.year ? '/' + hEnd.year : ''} AH`;
   document.getElementById('month-hijri').textContent = hijriRange;
 
   const grid = document.getElementById('month-grid');
@@ -837,6 +1063,20 @@ function renderCalendar() {
   });
 
   const fastDates = allFastDates();
+  // Build set of dates user actually confirmed as fasted (checked in localStorage)
+  const fastedDates = new Set(
+    Object.keys(localStorage)
+      .filter(k => k.startsWith('fast_') && localStorage.getItem(k) === '1')
+      .map(k => {
+        const parts = k.split('_');
+        for (let i = parts.length - 1; i >= 1; i--) {
+          const d = new Date(parts.slice(i).join('_'));
+          if (!isNaN(d.getTime())) return d.toDateString();
+        }
+        return null;
+      })
+      .filter(Boolean)
+  );
   const startDay  = new Date(viewYear, viewMonth, 1).getDay();
   for (let i = 0; i < startDay; i++) { const e = document.createElement('div'); e.className = 'day'; grid.appendChild(e); }
 
@@ -845,12 +1085,18 @@ function renderCalendar() {
     const date = new Date(viewYear, viewMonth, d);
     const div  = document.createElement('div');
     let cls    = 'day';
-    if (fastDates.has(date.toDateString())) cls += date.toDateString() === getToday().toDateString() ? ' fast-today' : ' fast';
+    const isToday   = date.toDateString() === getToday().toDateString();
+    const isPast    = date < getToday();
+    const isFasted  = fastedDates.has(date.toDateString());
+    const isFastDay = fastDates.has(date.toDateString());
+    if (isFasted && isPast)       cls += ' fasted';
+    else if (isFastDay && isToday) cls += ' fast-today';
+    else if (isFastDay)            cls += ' fast';
     const dow = date.getDay();
     if (dow === 1 || dow === 4) cls += ' weekly';
-    if (date.toDateString() === getToday().toDateString()) cls += ' today';
+    if (isToday) cls += ' today';
     div.className = cls;
-    const h = gToH(date);
+    const h = getAdjustedHijri(date);
     const islamicDay = getIslamicDay(h.month, h.day);
     const dotHTML = islamicDay
       ? `<span style="display:block;width:6px;height:6px;border-radius:50%;background:${islamicDay.color};margin:1px auto 0;flex-shrink:0" title="${islamicDay.label}"></span>`
@@ -865,7 +1111,7 @@ function renderCalendar() {
   info.innerHTML = '';
 
   for (let d = 1; d <= days; d++) {
-    const h = gToH(new Date(viewYear, viewMonth, d));
+    const h = getAdjustedHijri(new Date(viewYear, viewMonth, d));
     const islamicDay = getIslamicDay(h.month, h.day);
     if (islamicDay) {
       const t = document.createElement('div');
@@ -903,20 +1149,40 @@ function renderIslamicDayCountdown() {
     { hm: 12, hd: 10, label: 'Eid al-Adha',       emoji: '🎉', color: '#E74C3C' },
   ];
 
-  const todayH = gToH(getToday());
+  // Use API Hijri date if available
+  const todayH = (window._apiHijriDay && hijriOffset === 0)
+    ? { year: window._apiHijriYear, month: window._apiHijriMonth, day: window._apiHijriDay }
+    : gToH(getToday());
+
+  // API offset: difference in days between API Hijri day and algorithmic Hijri day
+  // e.g. API says day=2, algo says day=1 → offset = -(2-1) = -1 (events shift back 1 day)
+  const _apiOffsetDays = (window._apiHijriDay && hijriOffset === 0) ? (() => {
+    const algoH = gToH(getToday());
+    // If same month/year, simple day difference
+    if (algoH.month === window._apiHijriMonth && algoH.year === window._apiHijriYear) {
+      return -(window._apiHijriDay - algoH.day);
+    }
+    // Different month: use Gregorian difference
+    const algoGreg = hToG(algoH.year, algoH.month, algoH.day);
+    const apiGreg  = hToG(window._apiHijriYear, window._apiHijriMonth, window._apiHijriDay);
+    return Math.round((algoGreg - apiGreg) / 86400000);
+  })() : 0;
+
   let next = null, minDays = Infinity;
   for (const hy of [todayH.year, todayH.year + 1]) {
     for (const day of DAYS) {
       const greg = hToG(hy, day.hm, day.hd);
+      greg.setDate(greg.getDate() + _apiOffsetDays);
       greg.setHours(0, 0, 0, 0);
-      const diff = Math.ceil((greg - getToday()) / 86400000);
-      if (diff >= 0 && diff < minDays) { minDays = diff; next = { ...day, greg, diff }; }
+      const isToday = (todayH.year === hy && todayH.month === day.hm && todayH.day === day.hd);
+      const diff = isToday ? 0 : Math.ceil((greg - getToday()) / 86400000);
+      if (diff >= 0 && diff < minDays) { minDays = diff; next = { ...day, greg, diff, hy }; }
     }
   }
   if (!next) { wrap.innerHTML = ''; return; }
 
   const diffText = next.diff === 0 ? 'Today!' : next.diff === 1 ? 'Tomorrow' : `in ${next.diff} days`;
-  const h        = gToH(next.greg);
+  const h        = { year: next.hy, month: next.hm, day: next.hd };
   const gregStr  = next.greg.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   wrap.innerHTML = `
     <div style="display:flex;align-items:center;background:var(--color-background-secondary);border-radius:var(--border-radius-md);margin-bottom:.5rem;overflow:hidden">
@@ -984,12 +1250,18 @@ function renderPrayers(times, city) {
 
   const now    = new Date();
   const parsed = PRAYER_KEYS.map(k => ({ name: k, time: parseTime(times[k]), str: times[k] }));
-  // Skip Sunrise — it's not a salah time (no adhan, reference point only)
-  let nextIdx  = parsed.findIndex((p, i) => p.time > now && PRAYER_KEYS[i] !== 'Sunrise');
-  if (nextIdx === -1) {
-    // Past last prayer (Isha) — set Fajr to tomorrow
-    parsed[0].time = parseTomorrow(times[PRAYER_KEYS[0]]);
-    nextIdx = 0;
+  const _fajrT    = parseTime(times.Fajr);
+  const _sunriseT = parseTime(times.Sunrise);
+  const _inFajrWin = now >= _fajrT && now < _sunriseT;
+  let nextIdx;
+  if (_inFajrWin) {
+    nextIdx = PRAYER_KEYS.indexOf('Fajr');
+  } else {
+    nextIdx = parsed.findIndex(p => p.time > now && p.name !== 'Sunrise');
+    if (nextIdx === -1) {
+      parsed[0].time = parseTomorrow(times[PRAYER_KEYS[0]]);
+      nextIdx = 0;
+    }
   }
   const next    = parsed[nextIdx];
   const diffMs  = next.time - now;
@@ -997,39 +1269,82 @@ function renderPrayers(times, city) {
   const diffM   = Math.floor((diffMs % 3600000) / 60000);
   const countdown = diffH > 0 ? `${diffH}h ${diffM}m` : `${diffM}m`;
 
+  const _dhuhrT = parseTime(times.Dhuhr);
+  const _asrWarnT = new Date(parseTime(times.Asr).getTime() - 15 * 60000);
+  const _asrTr = parseTime(times.Asr);
+  const _maghribWarnTr = new Date(parseTime(times.Maghrib).getTime() - 15 * 60000);
+  const _inDhuhrWin = now >= _dhuhrT && now < _asrWarnT;
+  const _inAsrWin = now >= _asrTr && now < _maghribWarnTr;
+  const _inGreenWin = _inDhuhrWin || _inAsrWin;
+  const _greenLabel = _inAsrWin ? 'Asr' : 'Dhuhr';
+
+  // Box content controlled entirely by flash interval — start empty
+  const boxBg = 'transparent';
+  const boxLabel = '';
+  const boxName = '';
+  const boxCd = '';
+  const _sunriseTime  = parseTime(times.Sunrise);
+  const _ishraqStart  = new Date(_sunriseTime.getTime() + 25 * 60000);  // 25 min after sunrise
+  const _ishraqEnd    = new Date(parseTime(times.Dhuhr).getTime() - 15 * 60000);  // 15 min before Dhuhr
+  window._ishraqStart   = _ishraqStart;
+  window._ishraqEnd     = _ishraqEnd;
+  window._forbiddenStart = _sunriseTime;
+  window._sunriseTime    = _sunriseTime;
+  window._fajrTime       = parseTime(times.Fajr);
+  window._dhuhrTime      = parseTime(times.Dhuhr);
+  window._dhuhrWarnStart = new Date(parseTime(times.Dhuhr).getTime() - 15 * 60000);
+  window._asrTime        = parseTime(times.Asr);
+  window._asrWarnStart   = new Date(parseTime(times.Asr).getTime() - 15 * 60000);
+  window._maghribTime    = parseTime(times.Maghrib);
+  window._maghribWarnStart = new Date(parseTime(times.Maghrib).getTime() - 15 * 60000);
+  window._ishaTime       = parseTime(times.Isha);
+  window._ishaWarnStart  = new Date(parseTime(times.Isha).getTime() - 15 * 60000);
+
   const box = document.getElementById('prayer-box');
   box.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
-      <div>
-        <div style="font-size:13px;color:var(--color-text-secondary);margin-bottom:1px">Now</div>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;gap:8px">
+      <div style="flex:1;min-width:0">
         <div style="font-size:32px;font-weight:700;color:var(--color-text-primary);line-height:1.05;letter-spacing:-0.5px" id="current-time">--:-- --</div>
-        <div style="font-size:13px;color:var(--color-text-secondary);margin-top:3px;display:flex;align-items:center;gap:6px">
-          <span id="prayer-date-line">—</span>
-          <span style="display:flex;align-items:center;gap:3px">
-            <button onclick="adjustHijri(-1)" style="font-family:var(--font-sans);font-size:11px;padding:1px 7px;border-radius:20px;border:1px solid var(--color-border-tertiary);background:var(--color-background-secondary);color:var(--color-text-secondary);cursor:pointer">−1</button>
-            <span id="hijri-offset-label" style="font-size:11px;color:#1D9E75;min-width:16px;text-align:center"></span>
-            <button onclick="adjustHijri(1)" style="font-family:var(--font-sans);font-size:11px;padding:1px 7px;border-radius:20px;border:1px solid var(--color-border-tertiary);background:var(--color-background-secondary);color:var(--color-text-secondary);cursor:pointer">+1</button>
-          </span>
+        <div style="margin-top:4px">
+          <span id="prayer-date-greg" style="background:#1a7a4a;color:#ffffff;font-weight:600;padding:3px 12px;border-radius:20px;font-size:15px;white-space:nowrap;display:inline-block;border:1px solid #000">—</span>
+        </div>
+        <div style="margin-top:4px">
+          <span id="prayer-date-hijri" class="hijri-gold" style="font-size:15px;white-space:nowrap;">—</span>
         </div>
       </div>
-      <div style="text-align:right">
-        <div style="font-size:13px;color:var(--color-text-secondary);margin-bottom:1px" id="next-prayer-label">Next prayer</div>
-        <div style="font-size:17px;font-weight:700;color:var(--color-text-primary);line-height:1.1;white-space:nowrap">${next.name} <span style="font-weight:400;color:var(--color-text-secondary)">${to12hr(next.str).replace(/(AM|PM)$/, '<span style="font-size:11px;font-weight:400">$1</span>')}</span></div>
-        <div style="font-size:14px;color:#1D9E75;font-weight:600;margin-top:2px" id="next-prayer-countdown">in ${countdown}</div>
+      <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+        <div id="next-prayer-box" style="background:${boxBg};border-radius:10px;padding:8px 10px;text-align:right">
+          <div style="font-size:13px;color:#E1F5EE;margin-bottom:1px" id="next-prayer-label">${boxLabel}</div>
+          <div style="font-size:17px;font-weight:700;color:#ffffff;line-height:1.1;white-space:nowrap" id="next-prayer-name">${boxName}</div>
+          <div style="font-size:14px;color:#E1F5EE;font-weight:600;margin-top:2px" id="next-prayer-countdown">${boxCd}</div>
+        </div>
       </div>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:2px;margin-bottom:6px">
+    <div id="prayer-extra-text" style="font-size:25px;line-height:1;min-height:0;margin:6px 0 2px;text-align:center;"></div>
+    <div id="holy-month-banner" style="display:none;font-size:11px;color:#0a3d1f;line-height:1.4;margin:0 0 4px 0;padding:4px 8px;background:#e8f5ee;border-left:3px solid #1a7a4a;border-radius:4px"></div>
+    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:2px;margin-bottom:6px" id="prayer-grid">
       ${parsed.map((p, i) => {
-        const active = i === nextIdx;
-        return `<div style="text-align:center;padding:6px 2px;border-radius:8px;${active ? 'background:#1D9E75;' : ''}">
-          <div style="font-size:11px;margin-bottom:2px;${active ? 'color:#E1F5EE;' : 'color:var(--color-text-secondary);'}">${p.name}</div>
-          <div style="font-size:12px;font-weight:600;${active ? 'color:#ffffff;' : 'color:var(--color-text-primary);'}">${to12hr(p.str)}</div>
+        // Highlight the most recently passed prayer (skip Sunrise)
+        let activeIdx = nextIdx === 0 ? -1 : nextIdx - 1;
+        // If activeIdx lands on Sunrise, go one further back
+        if (activeIdx >= 0 && PRAYER_KEYS[activeIdx] === 'Sunrise') activeIdx--;
+        // Don't highlight Fajr as active after Ishraq window has ended
+        const _ishraqEndTime = window._ishraqEnd;
+        if (activeIdx === PRAYER_KEYS.indexOf('Fajr') && _ishraqEndTime && now > _ishraqEndTime) activeIdx = -1;
+        const isSunrise = p.name === 'Sunrise';
+        const active = i === activeIdx && !isSunrise;
+        // During Dhuhr window: green on Dhuhr, no purple highlight
+        const isNext = !_inGreenWin && i === nextIdx && !isSunrise;
+        const isDhuhrActive = _inDhuhrWin && i === PRAYER_KEYS.indexOf('Dhuhr');
+        const isAsrActive = _inAsrWin && i === PRAYER_KEYS.indexOf('Asr');
+        const cellBg = (active || isDhuhrActive || isAsrActive) ? '#1D9E75' : isNext ? '#8B3FA8' : '';
+        return `<div data-pidx="${i}" style="text-align:center;padding:6px 2px;border-radius:8px;${cellBg ? 'background:' + cellBg + ';' : ''}">
+          <div style="font-size:11px;margin-bottom:2px;${(active || isNext || isDhuhrActive || isAsrActive) ? 'color:#E1F5EE;' : 'color:var(--color-text-secondary);'}">${p.name}</div>
+          <div style="font-size:12px;font-weight:600;${(active || isNext || isDhuhrActive || isAsrActive) ? 'color:#ffffff;' : 'color:var(--color-text-primary);'}">${p.str ? to12hr(p.str) : ''}</div>
         </div>`;
       }).join('')}
     </div>
-    <div style="text-align:center;font-size:11px;color:var(--color-text-tertiary)">
-      <i class="ti ti-map-pin" style="font-size:11px;vertical-align:-1px" aria-hidden="true"></i> ${city}
-    </div>`;
+    `;
 
   // Sync clock and date line immediately
   updateClock();
@@ -1037,33 +1352,461 @@ function renderPrayers(times, city) {
 
   // FIX: flash logic — after Maghrib, compare now vs TOMORROW's Fajr
   setTimeout(() => {
-    const maghrib     = parseTime(times.Maghrib);
+    const maghrib      = parseTime(times.Maghrib);
+    const fajr         = parseTime(times.Fajr);
     const tomorrowFajr = parseTomorrow(times.Fajr);
-    const now2        = new Date();
-    const afterMaghrib  = now2 > maghrib;
+    const now2         = new Date();
+    const afterMaghrib = now2 > maghrib;
+    const afterMidnightBeforeFajr = now2 < fajr; // 12:01 AM to Fajr
     // Flash "Tomorrow" badges between Maghrib and tomorrow's Fajr
     const flashTomorrow = afterMaghrib && now2 < tomorrowFajr;
     document.querySelectorAll('.cd-tomorrow').forEach(el => el.classList.toggle('flash-alert', flashTomorrow));
-    // Flash "Today" badges the same window
-    document.querySelectorAll('.cd-today').forEach(el => el.classList.toggle('flash-alert', flashTomorrow));
+    // Flash "Today" badges: after Maghrib OR after midnight (before Fajr)
+    const flashToday = flashTomorrow || afterMidnightBeforeFajr;
+    document.querySelectorAll('.cd-today').forEach(el => el.classList.toggle('flash-alert', flashToday));
     // Hide stale "Today" badges after Maghrib
     if (afterMaghrib) document.querySelectorAll('.cd-today').forEach(el => { el.style.display = 'none'; });
   }, 100);
 
-  // Flash next-prayer countdown label when ≤ 15 min away (stored so it can be cleared on re-render)
+  // Flash interval — handles standard 15-min prayer warning AND Ishraq state
   if (_flashInterval) clearInterval(_flashInterval);
   _flashInterval = setInterval(() => {
-    const elCd  = document.getElementById('next-prayer-countdown');
-    const elLbl = document.getElementById('next-prayer-label');
+    const elCd   = document.getElementById('next-prayer-countdown');
+    const elLbl  = document.getElementById('next-prayer-label');
+    const elName = document.getElementById('next-prayer-name');
     if (!elCd) return;
-    const now3   = new Date();
-    const parsed3 = PRAYER_KEYS.map(k => parseTime(times[k]));
-    let ni = parsed3.findIndex((p, i) => p > now3 && PRAYER_KEYS[i] !== 'Sunrise');
-    if (ni === -1) ni = 0;
-    const ms      = parsed3[ni] - now3;
-    const isClose = ms > 0 && ms <= 15 * 60000;
-    elCd.classList.toggle('flash-alert',  isClose);
-    if (elLbl) elLbl.classList.toggle('flash-alert', isClose);
+    const now3 = new Date();
+
+    // ── Window calculations ────────────────────────────────────────────────
+    const ishraqStart    = window._ishraqStart;
+    const ishraqEnd      = window._ishraqEnd;
+    const forbiddenStart = window._forbiddenStart;
+    const fajrTimeW      = window._fajrTime;
+    const sunriseTimeW   = window._sunriseTime;
+    const dhuhrTimeW     = window._dhuhrTime;
+    const _box           = document.getElementById('next-prayer-box');
+    const _grid          = document.getElementById('prayer-grid');
+
+    const inFajrWindow = fajrTimeW && forbiddenStart && now3 >= fajrTimeW && now3 < forbiddenStart;
+    const inForbidden  = forbiddenStart && ishraqStart && now3 >= forbiddenStart && now3 < ishraqStart;
+    const inIshraq     = ishraqStart && ishraqEnd && now3 >= ishraqStart && now3 < ishraqEnd;
+
+    function resetGrid(highlightIdx) {
+      if (!_grid) return;
+      const sunriseIdx = PRAYER_KEYS.indexOf('Sunrise');
+      _grid.querySelectorAll('[data-pidx]').forEach(cell => {
+        const idx = parseInt(cell.dataset.pidx);
+        const nameEl = cell.querySelector('div:first-child');
+        const timeEl = cell.querySelector('div:last-child');
+        const active = idx === highlightIdx;
+        cell.style.background = active ? '#1D9E75' : '';
+        cell.classList.remove('flash-alert');
+        if (nameEl) { nameEl.style.color = active ? '#E1F5EE' : 'var(--color-text-secondary)'; if (idx === sunriseIdx) nameEl.textContent = 'Sunrise'; }
+        if (timeEl) timeEl.style.color = active ? '#ffffff' : 'var(--color-text-primary)';
+      });
+    }
+
+    // ── Fajr window ─────────────────────────────────────────────────────────
+    if (inFajrWindow) {
+      const msToSunrise = sunriseTimeW - now3;
+      const fm = Math.floor(msToSunrise / 60000);
+      const fs = Math.floor((msToSunrise % 60000) / 1000);
+      const fCountdown = String(fm).padStart(2,'0') + ':' + String(fs).padStart(2,'0');
+      if (_box) { _box.style.background = '#1D9E75'; _box.style.borderRadius = '10px'; _box.style.padding = '8px 10px'; _box.style.textAlign = 'right'; }
+      if (elLbl)  { elLbl.textContent = 'Fajr ends in'; elLbl.style.color = '#E1F5EE'; elLbl.style.fontSize = '15px'; elLbl.style.fontWeight = '600'; elLbl.classList.add('flash-alert'); }
+      if (elName) { elName.textContent = fCountdown; elName.style.fontSize = '22px'; elName.style.fontWeight = '700'; elName.style.color = '#ffffff'; elName.style.whiteSpace = 'nowrap'; elName.classList.remove('flash-alert'); }
+      if (elCd)   { elCd.textContent = ''; elCd.classList.remove('flash-alert'); }
+      resetGrid(PRAYER_KEYS.indexOf('Fajr'));
+      return;
+    }
+
+    // ── Forbidden window ─────────────────────────────────────────────────────
+    if (inForbidden) {
+      const msToIshraq = ishraqStart - now3;
+      const im = Math.floor(msToIshraq / 60000);
+      const is = Math.floor((msToIshraq % 60000) / 1000);
+      const countdown = String(im).padStart(2,'0') + ':' + String(is).padStart(2,'0');
+      if (_box) { _box.style.background = 'linear-gradient(135deg,#c8860a,#f5c200)'; _box.style.borderRadius = '10px'; _box.style.padding = '8px 10px'; _box.style.textAlign = 'center'; }
+      if (elLbl)  { elLbl.innerHTML = '<svg width="48" height="29" viewBox="0 0 80 48" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:0 auto 2px"><g stroke="#3d1f00" stroke-width="2.5" stroke-linecap="round" opacity="0.7"><line x1="40" y1="6" x2="40" y2="0"/><line x1="56" y1="10" x2="60" y2="5"/><line x1="66" y1="22" x2="72" y2="20"/><line x1="24" y1="10" x2="20" y2="5"/><line x1="14" y1="22" x2="8" y2="20"/><line x1="63" y1="33" x2="70" y2="34"/><line x1="17" y1="33" x2="10" y2="34"/></g><path d="M16,38 A24,24 0 0,1 64,38 Z" fill="rgba(61,31,0,0.7)"/><path d="M4,40 Q40,34 76,40" fill="none" stroke="rgba(61,31,0,0.7)" stroke-width="2.5" stroke-linecap="round"/></svg>'; elLbl.style.color = '#3d1f00'; elLbl.classList.remove('flash-alert'); }
+      if (elName) { elName.textContent = 'NO PRAYER'; elName.style.color = '#cc0000'; elName.style.fontSize = '13px'; elName.style.fontWeight = '700'; elName.style.color = '#3d1f00'; elName.style.whiteSpace = 'normal'; elName.classList.add('flash-alert'); }
+      if (elCd)   { elCd.textContent = 'Ishraq/Duha in ' + countdown; elCd.style.color = '#3d1f00'; elCd.style.fontSize = '14px'; elCd.style.fontWeight = '700'; elCd.classList.remove('flash-alert'); }
+      if (_grid) {
+        const _sunriseIdx = PRAYER_KEYS.indexOf('Sunrise');
+        _grid.querySelectorAll('[data-pidx]').forEach(cell => {
+          const idx = parseInt(cell.dataset.pidx);
+          const nameEl = cell.querySelector('div:first-child');
+          const timeEl = cell.querySelector('div:last-child');
+          if (idx === _sunriseIdx) {
+            cell.style.background = 'linear-gradient(135deg,#c8860a,#f5c200)';
+            if (nameEl) { nameEl.style.color = '#3d1f00'; nameEl.textContent = 'Sunrise 🚫'; }
+            if (timeEl) timeEl.style.color = '#3d1f00';
+          } else {
+            cell.style.background = '';
+            if (nameEl) nameEl.style.color = 'var(--color-text-secondary)';
+            if (timeEl) timeEl.style.color = 'var(--color-text-primary)';
+          }
+        });
+      }
+      return;
+    }
+
+    // ── Ishraq window ────────────────────────────────────────────────────────
+    if (inIshraq) {
+      if (_box) { _box.style.background = '#8B3FA8'; _box.style.borderRadius = '10px'; _box.style.padding = '8px 10px'; _box.style.textAlign = 'right'; }
+      if (elLbl)  { elLbl.innerHTML = ''; elLbl.textContent = '🌅 Ishraq/Duha'; elLbl.style.color = '#E1F5EE'; elLbl.style.fontSize = '15px'; elLbl.style.fontWeight = '600'; elLbl.classList.add('flash-alert'); }
+      if (elName) { elName.textContent = 'Pray now!'; elName.style.fontSize = '17px'; elName.style.fontWeight = '700'; elName.style.color = '#ffffff'; elName.style.whiteSpace = 'nowrap'; elName.classList.remove('flash-alert'); }
+      if (elCd)   { elCd.textContent = ''; elCd.classList.remove('flash-alert'); }
+      resetGrid(-1); // clears all highlights including Sunrise 🚫
+      return;
+    }
+
+    // ── Dhuhr warning (15 min before Dhuhr) ────────────────────────────────
+    const dhuhrWarnStartW = window._dhuhrWarnStart;
+    const inDhuhrWarn = dhuhrWarnStartW && dhuhrTimeW && now3 >= dhuhrWarnStartW && now3 < dhuhrTimeW;
+    if (inDhuhrWarn) {
+      showPrayerWarn('Dhuhr', dhuhrTimeW);
+      // Grid: Dhuhr pill purple, no green on previous prayer
+      if (_grid) {
+        const _dhuhrIdx = PRAYER_KEYS.indexOf('Dhuhr');
+        const sunriseIdx = PRAYER_KEYS.indexOf('Sunrise');
+        _grid.querySelectorAll('[data-pidx]').forEach(cell => {
+          const idx = parseInt(cell.dataset.pidx);
+          const nameEl = cell.querySelector('div:first-child');
+          const timeEl = cell.querySelector('div:last-child');
+          if (idx === _dhuhrIdx) {
+            cell.style.background = '#8B3FA8'; cell.classList.remove('flash-alert');
+            if (nameEl) nameEl.style.color = '#E1F5EE';
+            if (timeEl) timeEl.style.color = '#ffffff';
+          } else {
+            cell.style.background = ''; cell.classList.remove('flash-alert');
+            if (nameEl) nameEl.style.color = 'var(--color-text-secondary)';
+            if (timeEl) timeEl.style.color = 'var(--color-text-primary)';
+          }
+        });
+      }
+      return;
+    }
+
+    // ── Dhuhr active window ───────────────────────────────────────────────────
+    const _asrWarnStartW = window._asrWarnStart;
+    const inDhuhr = dhuhrTimeW && _asrWarnStartW && now3 >= dhuhrTimeW && now3 < _asrWarnStartW;
+    if (inDhuhr) {
+      if (_box) { _box.style.background = '#1D9E75'; _box.style.borderRadius = '10px'; _box.style.padding = '8px 10px'; _box.style.textAlign = 'right'; }
+      if (elLbl)  { elLbl.innerHTML = ''; elLbl.textContent = 'Dhuhr'; elLbl.style.color = '#E1F5EE'; elLbl.style.fontSize = '15px'; elLbl.style.fontWeight = '600'; elLbl.classList.remove('flash-alert'); }
+      if (elName) { elName.textContent = 'Pray now!'; elName.style.fontSize = '17px'; elName.style.fontWeight = '700'; elName.style.color = '#ffffff'; elName.style.whiteSpace = 'nowrap'; elName.classList.remove('flash-alert'); }
+      if (elCd)   { elCd.textContent = ''; elCd.classList.remove('flash-alert'); }
+      resetGrid(PRAYER_KEYS.indexOf('Dhuhr'));
+      return;
+    }
+
+    // ── Prayer warning windows (15 min before each prayer) ─────────────────
+    const asrTimeW        = window._asrTime;
+    const asrWarnStart    = window._asrWarnStart;
+    const maghribTimeW    = window._maghribTime;
+    const maghribWarnStart = window._maghribWarnStart;
+    const ishaTimeW       = window._ishaTime;
+    const ishaWarnStart   = window._ishaWarnStart;
+
+    const inAsrWarn     = asrWarnStart && asrTimeW && now3 >= asrWarnStart && now3 < asrTimeW;
+    const inMaghribWarn = maghribWarnStart && maghribTimeW && now3 >= maghribWarnStart && now3 < maghribTimeW;
+    const inIshaWarn    = ishaWarnStart && ishaTimeW && now3 >= ishaWarnStart && now3 < ishaTimeW;
+
+    function showPrayerWarn(label, prayerTime) {
+      const ms2 = prayerTime - now3;
+      const wm = Math.floor(ms2 / 60000);
+      const ws = Math.floor((ms2 % 60000) / 1000);
+      const wCountdown = String(wm).padStart(2,'0') + ':' + String(ws).padStart(2,'0');
+      if (_box) { _box.style.background = '#8B3FA8'; _box.style.borderRadius = '10px'; _box.style.padding = '8px 10px'; _box.style.textAlign = 'right'; }
+      if (elLbl)  { elLbl.innerHTML = ''; elLbl.textContent = 'Next prayer'; elLbl.style.display = ''; elLbl.style.color = '#E1F5EE'; elLbl.style.fontSize = '11px'; elLbl.style.fontWeight = '600'; elLbl.classList.remove('flash-alert'); }
+      if (elName) { elName.textContent = label; elName.style.fontSize = '17px'; elName.style.fontWeight = '700'; elName.style.color = '#ffffff'; elName.style.whiteSpace = 'nowrap'; elName.classList.remove('flash-alert'); }
+      if (elCd)   { elCd.textContent = 'in ' + wCountdown; elCd.style.color = '#E1F5EE'; elCd.style.fontSize = '14px'; elCd.style.fontWeight = '600'; elCd.classList.remove('flash-alert'); }
+    }
+
+    if (inAsrWarn) {
+      showPrayerWarn('Asr', asrTimeW);
+      // Grid: Dhuhr flashes green, Asr highlighted purple
+      if (_grid) {
+        const _dhuhrIdx = PRAYER_KEYS.indexOf('Dhuhr');
+        const _asrIdx = PRAYER_KEYS.indexOf('Asr');
+        const sunriseIdx = PRAYER_KEYS.indexOf('Sunrise');
+        _grid.querySelectorAll('[data-pidx]').forEach(cell => {
+          const idx = parseInt(cell.dataset.pidx);
+          const nameEl = cell.querySelector('div:first-child');
+          const timeEl = cell.querySelector('div:last-child');
+          if (idx === _dhuhrIdx) {
+            cell.style.background = '#1D9E75';
+            cell.classList.add('flash-alert');
+            if (nameEl) { nameEl.style.color = '#E1F5EE'; }
+            if (timeEl) { timeEl.style.color = '#ffffff'; }
+          } else if (idx === _asrIdx) {
+            cell.style.background = '#8B3FA8';
+            cell.classList.remove('flash-alert');
+            if (nameEl) { nameEl.style.color = '#E1F5EE'; }
+            if (timeEl) { timeEl.style.color = '#ffffff'; }
+          } else {
+            cell.style.background = '';
+            cell.classList.remove('flash-alert');
+            if (nameEl) nameEl.style.color = idx === sunriseIdx ? 'var(--color-text-secondary)' : 'var(--color-text-secondary)';
+            if (timeEl) timeEl.style.color = 'var(--color-text-primary)';
+          }
+        });
+      }
+      return;
+    }
+
+    // ── Asr active window ─────────────────────────────────────────────────────
+    const inAsrActive = asrTimeW && window._maghribWarnStart && now3 >= asrTimeW && now3 < window._maghribWarnStart;
+    if (inAsrActive) {
+      if (_box) { _box.style.background = '#1D9E75'; _box.style.borderRadius = '10px'; _box.style.padding = '8px 10px'; _box.style.textAlign = 'right'; }
+      if (elLbl)  { elLbl.innerHTML = ''; elLbl.textContent = 'Asr'; elLbl.style.color = '#E1F5EE'; elLbl.style.fontSize = '15px'; elLbl.style.fontWeight = '600'; elLbl.classList.remove('flash-alert'); }
+      if (elName) { elName.textContent = 'Pray now!'; elName.style.fontSize = '17px'; elName.style.fontWeight = '700'; elName.style.color = '#ffffff'; elName.style.whiteSpace = 'nowrap'; elName.classList.remove('flash-alert'); }
+      if (elCd)   { elCd.textContent = ''; elCd.classList.remove('flash-alert'); }
+      resetGrid(PRAYER_KEYS.indexOf('Asr'));
+      return;
+    }
+
+    if (inMaghribWarn) {
+      const isFasting = isFastingToday();
+      const label = isFasting ? 'Iftar' : 'Maghrib';
+      showPrayerWarn(label, maghribTimeW);
+      // Grid: Asr flashes green, Maghrib purple
+      if (_grid) {
+        const _asrIdx = PRAYER_KEYS.indexOf('Asr');
+        const _maghribIdx = PRAYER_KEYS.indexOf('Maghrib');
+        const sunriseIdx = PRAYER_KEYS.indexOf('Sunrise');
+        _grid.querySelectorAll('[data-pidx]').forEach(cell => {
+          const idx = parseInt(cell.dataset.pidx);
+          const nameEl = cell.querySelector('div:first-child');
+          const timeEl = cell.querySelector('div:last-child');
+          if (idx === _asrIdx) {
+            cell.style.background = '#1D9E75'; cell.classList.add('flash-alert');
+            if (nameEl) nameEl.style.color = '#E1F5EE';
+            if (timeEl) timeEl.style.color = '#ffffff';
+          } else if (idx === _maghribIdx) {
+            cell.style.background = '#8B3FA8'; cell.classList.remove('flash-alert');
+            if (nameEl) nameEl.style.color = '#E1F5EE';
+            if (timeEl) timeEl.style.color = '#ffffff';
+          } else {
+            cell.style.background = ''; cell.classList.remove('flash-alert');
+            if (nameEl) nameEl.style.color = 'var(--color-text-secondary)';
+            if (timeEl) timeEl.style.color = 'var(--color-text-primary)';
+          }
+        });
+      }
+      return;
+    }
+
+    // ── Maghrib active window ─────────────────────────────────────────────────
+    const inMaghribActive = maghribTimeW && window._ishaWarnStart && now3 >= maghribTimeW && now3 < window._ishaWarnStart;
+    if (inMaghribActive) {
+      if (_box) { _box.style.background = '#1D9E75'; _box.style.borderRadius = '10px'; _box.style.padding = '8px 10px'; _box.style.textAlign = 'right'; }
+      if (elLbl)  { elLbl.innerHTML = ''; elLbl.textContent = 'Maghrib'; elLbl.style.color = '#E1F5EE'; elLbl.style.fontSize = '15px'; elLbl.style.fontWeight = '600'; elLbl.classList.remove('flash-alert'); }
+      if (elName) { elName.textContent = 'Pray now!'; elName.style.fontSize = '17px'; elName.style.fontWeight = '700'; elName.style.color = '#ffffff'; elName.style.whiteSpace = 'nowrap'; elName.classList.remove('flash-alert'); }
+      if (elCd)   { elCd.textContent = ''; elCd.classList.remove('flash-alert'); }
+      resetGrid(PRAYER_KEYS.indexOf('Maghrib'));
+      return;
+    }
+
+    if (inIshaWarn) {
+      showPrayerWarn('Isha', ishaTimeW);
+      // Grid: Maghrib flashes green, Isha purple
+      if (_grid) {
+        const _maghribIdx = PRAYER_KEYS.indexOf('Maghrib');
+        const _ishaIdx = PRAYER_KEYS.indexOf('Isha');
+        _grid.querySelectorAll('[data-pidx]').forEach(cell => {
+          const idx = parseInt(cell.dataset.pidx);
+          const nameEl = cell.querySelector('div:first-child');
+          const timeEl = cell.querySelector('div:last-child');
+          if (idx === _maghribIdx) {
+            cell.style.background = '#1D9E75'; cell.classList.add('flash-alert');
+            if (nameEl) nameEl.style.color = '#E1F5EE';
+            if (timeEl) timeEl.style.color = '#ffffff';
+          } else if (idx === _ishaIdx) {
+            cell.style.background = '#8B3FA8'; cell.classList.remove('flash-alert');
+            if (nameEl) nameEl.style.color = '#E1F5EE';
+            if (timeEl) timeEl.style.color = '#ffffff';
+          } else {
+            cell.style.background = ''; cell.classList.remove('flash-alert');
+            if (nameEl) nameEl.style.color = 'var(--color-text-secondary)';
+            if (timeEl) timeEl.style.color = 'var(--color-text-primary)';
+          }
+        });
+      }
+      return;
+    }
+
+    // ── Isha/night window (Isha → midnight → last third → Fajr) ─────────────
+    const _afterMidCheck = now3.getHours() < 12;
+    const _fajrToday = _prayerTimes ? parseTime(_prayerTimes.Fajr) : null;
+    const _pastFajr = _afterMidCheck && _fajrToday && now3 >= _fajrToday;
+    const _isNight = !_pastFajr && ((ishaTimeW && now3 >= ishaTimeW) ||
+                     (_afterMidCheck && window._fajrTime && now3 < window._fajrTime));
+    if (_isNight) {
+      // Clear all lingering flash/highlights from previous prayer warn windows
+      if (_grid) _grid.querySelectorAll('[data-pidx]').forEach(cell => { cell.classList.remove('flash-alert'); });
+      const _afterMid = _afterMidCheck;
+      let _fajr = _afterMid ? _fajrToday : parseTomorrow(_prayerTimes.Fajr);
+      if (!_fajr || _fajr <= now3) _fajr = parseTomorrow(_prayerTimes.Fajr);
+      const _mid  = new Date(now3);
+      if (!_afterMid) _mid.setDate(_mid.getDate() + 1);
+      _mid.setHours(0, 0, 0, 0);
+      const _lastThird  = new Date((_mid.getTime() + _fajr.getTime()) / 2);
+      const _fajrWarnStart = new Date(_fajr.getTime() - 15 * 60000);
+      const _inFajrWarn  = _afterMid && now3 >= _fajrWarnStart && now3 < _fajr;
+      const _inTahajjud  = _afterMid && now3 >= new Date(_lastThird.getTime() - 60000) && now3 < _fajr;
+
+      if (_inFajrWarn) {
+        // Clear any old interval — use seconds-based alternation
+        if (_fajrWarnInterval) { clearInterval(_fajrWarnInterval); _fajrWarnInterval = null; }
+        _fajrWarnToggle = now3.getSeconds() % 4 < 2;
+        const _fms = _fajr - now3;
+        const _fm  = Math.floor(_fms / 60000);
+        const _fs  = Math.floor((_fms % 60000) / 1000);
+        const _fLabel = _fm >= 1 ? `Fajr in ${_fm}m ${_fs}s` : `Fajr in ${_fs}s`;
+        if (_fajrWarnToggle) {
+          // Green — Fajr countdown
+          if (_box)  { _box.style.background = '#1D9E75'; _box.style.borderRadius = '10px'; _box.style.padding = '8px 10px'; _box.style.textAlign = 'right'; }
+          if (elLbl) { elLbl.innerHTML = ''; elLbl.textContent = ''; elLbl.classList.remove('flash-alert'); }
+          if (elName){ elName.textContent = _fLabel; elName.style.fontSize = '17px'; elName.style.fontWeight = '700'; elName.style.color = '#ffffff'; elName.style.whiteSpace = 'nowrap'; elName.classList.remove('flash-alert'); }
+          if (elCd)  { elCd.textContent = ''; elCd.classList.remove('flash-alert'); }
+        } else {
+          // Purple — Pray Tahajjud
+          if (_box)  { _box.style.background = '#8B3FA8'; _box.style.borderRadius = '10px'; _box.style.padding = '8px 10px'; _box.style.textAlign = 'right'; }
+          if (elLbl) { elLbl.innerHTML = ''; elLbl.textContent = ''; elLbl.classList.remove('flash-alert'); }
+          if (elName){ elName.textContent = 'Pray Tahajjud'; elName.style.fontSize = '17px'; elName.style.fontWeight = '700'; elName.style.color = '#ffffff'; elName.style.whiteSpace = 'nowrap'; elName.classList.remove('flash-alert'); }
+          if (elCd)  { elCd.textContent = ''; elCd.classList.remove('flash-alert'); }
+        }
+      } else {
+        // Not in Fajr warn — clear toggle interval
+        if (_fajrWarnInterval) { clearInterval(_fajrWarnInterval); _fajrWarnInterval = null; _fajrWarnToggle = false; }
+        if (_inTahajjud) {
+          // Purple — Pray Tahajjud
+          if (_box)  { _box.style.background = '#8B3FA8'; _box.style.borderRadius = '10px'; _box.style.padding = '8px 10px'; _box.style.textAlign = 'right'; }
+          if (elLbl) { elLbl.innerHTML = ''; elLbl.textContent = ''; elLbl.classList.remove('flash-alert'); }
+          if (elName){ elName.textContent = 'Pray Tahajjud'; elName.style.fontSize = '17px'; elName.style.fontWeight = '700'; elName.style.color = '#ffffff'; elName.style.whiteSpace = 'nowrap'; elName.classList.remove('flash-alert'); }
+          if (elCd)  { elCd.textContent = ''; elCd.classList.remove('flash-alert'); }
+        } else if (_afterMid) {
+          const _ms = _lastThird - now3;
+          const _h  = Math.floor(_ms / 3600000);
+          const _m  = Math.floor((_ms % 3600000) / 60000);
+          const _cd = _h > 0 ? `Tahajjud in ${_h}h ${_m}m` : `Tahajjud in ${_m}m`;
+          if (_box)  { _box.style.background = '#8B3FA8'; _box.style.borderRadius = '10px'; _box.style.padding = '8px 10px'; _box.style.textAlign = 'right'; }
+          if (elLbl) { elLbl.innerHTML = ''; elLbl.textContent = ''; elLbl.classList.remove('flash-alert'); }
+          if (elName){ elName.textContent = _cd; elName.style.fontSize = '17px'; elName.style.fontWeight = '700'; elName.style.color = '#ffffff'; elName.style.whiteSpace = 'nowrap'; elName.classList.remove('flash-alert'); }
+          if (elCd)  { elCd.textContent = ''; elCd.classList.remove('flash-alert'); }
+        } else {
+          // Green — Pray Isha
+          if (_box)  { _box.style.background = '#1D9E75'; _box.style.borderRadius = '10px'; _box.style.padding = '8px 10px'; _box.style.textAlign = 'right'; }
+          if (elLbl) { elLbl.innerHTML = ''; elLbl.textContent = ''; elLbl.classList.remove('flash-alert'); }
+          if (elName){ elName.textContent = 'Pray Isha'; elName.style.fontSize = '17px'; elName.style.fontWeight = '700'; elName.style.color = '#ffffff'; elName.style.whiteSpace = 'nowrap'; elName.classList.remove('flash-alert'); }
+          if (elCd)  { elCd.textContent = ''; elCd.classList.remove('flash-alert'); }
+        }
+      }
+      // Grid: only highlight Isha or Fajr, clear everything else
+      const _fajrIdx = PRAYER_KEYS.indexOf('Fajr');
+      const _ishaIdx = PRAYER_KEYS.indexOf('Isha');
+      if (_grid) {
+        PRAYER_KEYS.forEach((k, i) => {
+          const cell = _grid.querySelector(`[data-pidx="${i}"]`);
+          if (!cell) return;
+          const nm = cell.querySelector('div:first-child');
+          const tm = cell.querySelector('div:last-child');
+          cell.classList.remove('flash-alert');
+          if (_afterMid && _inFajrWarn && i === _fajrIdx) {
+            cell.style.background = '#8B3FA8';
+            if (nm) nm.style.color = '#E1F5EE';
+            if (tm) tm.style.color = '#ffffff';
+          } else if (_afterMid && i === _ishaIdx) {
+            cell.style.background = '#fff8d6';
+            if (nm) nm.style.color = '#7a6000';
+            if (tm) tm.style.color = '#7a6000';
+          } else if (!_afterMid && i === _ishaIdx) {
+            cell.style.background = '#1D9E75';
+            if (nm) nm.style.color = '#E1F5EE';
+            if (tm) tm.style.color = '#ffffff';
+          } else {
+            cell.style.background = '';
+            if (nm) nm.style.color = 'var(--color-text-secondary)';
+            if (tm) tm.style.color = 'var(--color-text-primary)';
+          }
+        });
+      }
+      return;
+    }
+
+    // ── Restore after all special windows ────────────────────────────────────
+    if (dhuhrWarnStartW && dhuhrTimeW && now3 >= dhuhrWarnStartW && now3 < dhuhrTimeW) return;
+    if (dhuhrTimeW && _asrWarnStartW && now3 >= dhuhrTimeW && now3 < _asrWarnStartW) return;
+    if (window._asrTime && window._maghribWarnStart && now3 >= window._asrTime && now3 < window._maghribWarnStart) return;
+    if (window._maghribTime && window._ishaWarnStart && now3 >= window._maghribTime && now3 < window._ishaWarnStart) return;
+    if ((window._ishaTime && now3 >= window._ishaTime) ||
+        (now3.getHours() < 12 && window._fajrTime && now3 < window._fajrTime)) return;
+    if (_grid) {
+      [PRAYER_KEYS.indexOf('Sunrise'), PRAYER_KEYS.indexOf('Dhuhr')].forEach(sIdx => {
+        const sCell = _grid.querySelector(`[data-pidx="${sIdx}"]`);
+        if (sCell) {
+          const sName = sCell.querySelector('div:first-child');
+          if (sName && sName.textContent.includes('🚫')) sName.textContent = PRAYER_KEYS[sIdx];
+          sCell.style.background = '';
+          const sTime = sCell.querySelector('div:last-child');
+          if (sTime) { sTime.style.color = 'var(--color-text-primary)'; }
+          if (sName) sName.style.color = 'var(--color-text-secondary)';
+        }
+      });
+    }
+    // Determine next prayer for restore
+    const _restoreParsed = _prayerTimes ? PRAYER_KEYS.map(k => ({ name: k, time: parseTime(_prayerTimes[k]), str: _prayerTimes[k] })) : [];
+    let _restoreNext = _restoreParsed.find(p => p.time > now3 && p.name !== 'Sunrise');
+    if (!_restoreNext && _restoreParsed.length) _restoreNext = _restoreParsed[0];
+    const _restoreNextIdx = _restoreNext ? PRAYER_KEYS.indexOf(_restoreNext.name) : -1;
+    const _rMs = _restoreNext ? (_restoreNext.time - now3) : Infinity;
+    const _rNear = _rMs <= 15 * 60000;
+    // Find the prayer immediately before the next one (skip Sunrise)
+    const _prevIdx = _restoreNextIdx > 0 ? (() => {
+      for (let i = _restoreNextIdx - 1; i >= 0; i--) {
+        if (PRAYER_KEYS[i] !== 'Sunrise') return i;
+      }
+      return -1;
+    })() : -1;
+    if (_grid) {
+      _grid.querySelectorAll('[data-pidx]').forEach(cell => {
+        const idx = parseInt(cell.dataset.pidx);
+        const nameEl = cell.querySelector('div:first-child');
+        const timeEl = cell.querySelector('div:last-child');
+        const isNextCell = idx === _restoreNextIdx;
+        const isPrevCell = idx === _prevIdx;
+        if (isNextCell && _rNear) {
+          // Next prayer purple
+          cell.style.background = '#8B3FA8';
+          cell.classList.remove('flash-alert');
+          if (nameEl) nameEl.style.color = '#E1F5EE';
+          if (timeEl) timeEl.style.color = '#ffffff';
+        } else if (isPrevCell && _rNear) {
+          // Only flash green if previous prayer was within last 4 hours (still in its window)
+          cell.style.background = '#1D9E75';
+          cell.classList.add('flash-alert');
+          if (nameEl) nameEl.style.color = '#E1F5EE';
+          if (timeEl) timeEl.style.color = '#ffffff';
+        } else {
+          cell.style.background = '';
+          cell.classList.remove('flash-alert');
+          if (nameEl) nameEl.style.color = 'var(--color-text-secondary)';
+          if (timeEl) timeEl.style.color = 'var(--color-text-primary)';
+        }
+      });
+    }
+    // Always show next prayer in box — never leave it empty
+    if (_restoreNext && _box) {
+      const _rH = Math.floor(_rMs / 3600000);
+      const _rM = Math.floor((_rMs % 3600000) / 60000);
+      const _rS = Math.floor((_rMs % 60000) / 1000);
+      const _rH2 = _rH * 60 + _rM;
+      const _rCd = `in ${String(_rH2).padStart(2,'0')}:${String(_rS).padStart(2,'0')}`; 
+      _box.style.background = '#8B3FA8'; _box.style.borderRadius = '10px'; _box.style.padding = '8px 10px'; _box.style.textAlign = 'right';
+      if (elLbl)  { elLbl.innerHTML = ''; elLbl.textContent = 'Next prayer'; elLbl.style.color = '#E1F5EE'; elLbl.style.fontSize = '11px'; elLbl.style.fontWeight = '600'; elLbl.classList.remove('flash-alert'); }
+      if (elName) { elName.textContent = _restoreNext.name; elName.style.fontSize = '17px'; elName.style.fontWeight = '700'; elName.style.color = '#ffffff'; elName.style.whiteSpace = 'nowrap'; elName.classList.remove('flash-alert'); }
+      if (elCd)   { elCd.textContent = _rCd; elCd.style.color = '#E1F5EE'; elCd.style.fontSize = '14px'; elCd.style.fontWeight = '600'; elCd.classList.remove('flash-alert'); }
+    }
   }, 1000);
 
   // Start Suhoor/Iftar countdown banner
@@ -1076,7 +1819,9 @@ function renderPrayers(times, city) {
     navigator.serviceWorker.controller.postMessage({
       type: 'SCHEDULE_NOTIFICATIONS',
       fajr:         parseTime(times.Fajr).toISOString(),
+      sunrise:      parseTime(times.Sunrise).toISOString(),
       maghrib:      parseTime(times.Maghrib).toISOString(),
+      isha:         parseTime(times.Isha).toISOString(),
       isFastingDay: isFastingToday()
     });
   }
@@ -1084,6 +1829,11 @@ function renderPrayers(times, city) {
     scheduleNotifications();
     scheduleEveReminders();
   }
+  // Re-render fast list now that _prayerTimes is set,
+  // so afterMag check correctly removes today-fast decoration if past Maghrib
+  renderUpcoming();
+  // Reschedule precise Maghrib/Fajr triggers with fresh prayer times
+  scheduleUpcomingRerender();
 }
 
 // ── Local prayer time calculation ───────────────────────────────────────
@@ -1164,30 +1914,46 @@ function loadPrayers(lat, lon, city) {
   const yyyy  = today.getFullYear();
   fetch(`https://api.aladhan.com/v1/timings/${dd}-${mm}-${yyyy}?latitude=${lat}&longitude=${lon}&method=2`)
     .then(r => r.json())
-    .then(data => { if (data.code === 200) renderPrayers(data.data.timings, city); })
+    .then(data => {
+      if (data.code === 200) {
+        renderPrayers(data.data.timings, city);
+        // Use API Hijri date — correct for location and moon sighting
+        const hijri = data.data.date.hijri;
+        if (hijri) {
+          window._apiHijriDay   = parseInt(hijri.day);
+          window._apiHijriMonth = parseInt(hijri.month.number);
+          window._apiHijriYear  = parseInt(hijri.year);
+          window._apiHijriMonthName = hijri.month.en;
+          // Update the date display immediately
+          const dlH = document.getElementById('prayer-date-hijri');
+          const dlG = document.getElementById('prayer-date-greg');
+          if (dlH) dlH.textContent = `${hijri.day} ${hijri.month.en} ${hijri.year}`;
+          if (dlG) dlG.textContent = new Date().toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
+          // Re-render fasting tracker now that API Hijri date is available
+          calcScore();
+        }
+      }
+    })
     .catch(() => {}); // local times already shown — silently ignore network failures
 }
 
 function initPrayers() {
-  if (!navigator.geolocation) {
-    document.getElementById('prayer-box').innerHTML = '<div class="prayer-error">Geolocation not supported by your browser.</div>';
-    return;
+  // Show Houston immediately so UI never blank while waiting for GPS
+  if (!window._cachedLat) {
+    window._cachedLat = 29.7604; window._cachedLon = -95.3698;
+    window._cachedCity = 'Houston';
+    loadPrayers(29.7604, -95.3698, 'Houston');
   }
+  if (!navigator.geolocation) return;
   navigator.geolocation.getCurrentPosition(
     pos => {
       const { latitude: lat, longitude: lon } = pos.coords;
-      window._cachedLat  = lat;
-      window._cachedLon  = lon;
+      window._cachedLat = lat; window._cachedLon = lon;
       window._cachedCity = 'Your location';
       loadPrayers(lat, lon, 'Your location');
     },
-    () => {
-      // FIX: show retry button so user doesn't have to reload the page
-      document.getElementById('prayer-box').innerHTML =
-        '<div class="prayer-error">Location access denied.<br>' +
-        '<button onclick="retryLocation()" style="margin-top:6px;font-family:var(--font-sans);font-size:12px;padding:4px 12px;border-radius:20px;border:1px solid var(--color-border-tertiary);background:var(--color-background-secondary);color:var(--color-text-secondary);cursor:pointer">Retry</button></div>';
-    },
-    { timeout: 8000, maximumAge: 600000 }
+    () => { /* already showing Houston fallback */ },
+    { timeout: 5000, maximumAge: 300000, enableHighAccuracy: false }
   );
 }
 
@@ -1214,32 +1980,74 @@ function updateClock() {
   const m    = String(now.getMinutes()).padStart(2, '0');
   const ampm = h >= 12 ? 'PM' : 'AM';
   h          = h % 12 || 12;
-  el.textContent = `${h}:${m} ${ampm}`;
+  el.innerHTML = `${h}:${m}<span style="font-size:0.45em;vertical-align:super;margin-left:3px;font-weight:500">${ampm}</span>`;
 
-  // Date line: Hijri + Gregorian
-  const dl = document.getElementById('prayer-date-line');
-  if (dl) {
-    const hd   = getAdjustedHijri(now);
-    const greg = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-    dl.textContent = `${hd.day} ${HIJRI_MONTHS[hd.month - 1]} ${hd.year} · ${greg}`;
+  // Date lines: Hijri + Gregorian split
+  const dlH = document.getElementById('prayer-date-hijri');
+  const dlG = document.getElementById('prayer-date-greg');
+  if (dlH || dlG) {
+    const hd = getAdjustedHijri(now);
+    if (dlH) dlH.textContent = `${hd.day} ${HIJRI_MONTHS[hd.month - 1]} ${hd.year}`;
+    if (dlG) dlG.textContent = now.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
+
+    const HOLY = {
+      1:  ['Muharram', 'Sacred month & Islamic New Year.', 'Fast 9th (Tasua) + 10th (Ashura), 11th optional. Increase dhikr & tawbah.'],
+      7:  ['Rajab', 'Sacred month; Isra wal Miraj (27th).', 'Avoid sin, fast voluntarily, seek forgiveness.'],
+      8:  ['Shaban', 'Beloved month of the Prophet ﷺ.', 'Increase fasting & Quran; fast the 15th.'],
+      9:  ['Ramadan', 'Holiest month — Quran was revealed.', 'Fast daily, pray Tarawih, seek Laylat al-Qadr.'],
+      11: ['Dhul Qidah', 'Sacred month of Hajj preparation.', 'Avoid sin, increase worship & dhikr.'],
+      12: ['Dhul Hijjah', 'Best 10 days of the year.', 'Fast 1st–9th, Arafah (9th) most emphasized. Make Takbir, give Udhiyah.']
+    };
+    const banner = document.getElementById('holy-month-banner');
+    const holy = HOLY[hd.month];
+    if (holy && banner) {
+      banner.style.display = 'block';
+      banner.innerHTML = `<b>🌙 ${holy[0]}:</b> ${holy[1]} <span style="color:#1a7a4a;font-weight:600">Do:</span> ${holy[2]}`;
+      if (dlH) { dlH.className = 'hijri-gold'; }
+    } else {
+      if (banner) banner.style.display = 'none';
+      if (dlH) { dlH.className = 'hijri-green'; }
+    }
   }
 
-  // Update next-prayer countdown text in real time (uses cached parsed times)
+  // Update next-prayer countdown text in real time
   if (_prayerTimes && _parsedPrayerTimes) {
     const cdEl = document.getElementById('next-prayer-countdown');
     if (cdEl) {
-      let ni = _parsedPrayerTimes.findIndex((p, i) => p > now && PRAYER_KEYS[i] !== 'Sunrise');
-      let targetTime;
-      if (ni === -1) {
-        targetTime = parseTomorrow(_prayerTimes[PRAYER_KEYS[0]]);
-      } else {
-        targetTime = _parsedPrayerTimes[ni];
+      // Skip during all special windows — flash interval handles those
+      const _fT = window._fajrTime, _iE = window._ishraqEnd;
+      const _dH = window._dhuhrTime, _aW = window._asrWarnStart, _aT = window._asrTime;
+      const _mW = window._maghribWarnStart, _mT = window._maghribTime;
+      const _iW = window._ishaWarnStart, _iT = window._ishaTime;
+      const _dWS = window._dhuhrWarnStart;
+      const _skipCd = ((_fT && _iE && now >= _fT && now < _iE) ||
+          (_dWS && _dH && now >= _dWS && now < _dH) ||
+          (_dH && _aW && now >= _dH && now < _aW) ||
+          (_aW && _aT && now >= _aW && now < _aT) ||
+          (_aT && _mW && now >= _aT && now < _mW) ||
+          (_mW && _mT && now >= _mW && now < _mT) ||
+          (_mT && _iW && now >= _mT && now < _iW) ||
+          (_iW && _iT && now >= _iW && now < _iT) ||
+          (_iT && now >= _iT) ||
+          (now.getHours() < 12 && window._fajrTime && now < window._fajrTime));
+      if (!_skipCd) {
+        let ni = _parsedPrayerTimes.findIndex((p, i) => p > now && PRAYER_KEYS[i] !== 'Sunrise');
+        let targetTime;
+        if (ni === -1) {
+          targetTime = parseTomorrow(_prayerTimes[PRAYER_KEYS[0]]);
+        } else {
+          targetTime = _parsedPrayerTimes[ni];
+        }
+        const ms = targetTime - now;
+        const dh = Math.floor(ms / 3600000);
+        const dm = Math.floor((ms % 3600000) / 60000);
+        const ds = Math.floor((ms % 60000) / 1000);
+        if (ms <= 15 * 60000) {
+          cdEl.textContent = dh > 0 ? `in ${dh}h ${dm}m` : `in ${dm}m ${ds}s`;
+        } else {
+          cdEl.textContent = '';
+        }
       }
-      const ms = targetTime - now;
-      const dh = Math.floor(ms / 3600000);
-      const dm = Math.floor((ms % 3600000) / 60000);
-      const ds = Math.floor((ms % 60000) / 1000);
-      cdEl.textContent = dh > 0 ? `in ${dh}h ${dm}m` : `in ${dm}m ${ds}s`;
     }
   }
 }
@@ -1255,6 +2063,7 @@ setInterval(updateClock, 1000);
     TODAY  = _today;
     _fastDateCache = null; // invalidate allFastDates cache
     _parsedPrayerTimes = null;
+    _notifScheduledDate = null; // reset so notifications reschedule for new day
     renderUpcoming();
     calcScore();
     if (window._cachedLat !== undefined) loadPrayers(window._cachedLat, window._cachedLon, window._cachedCity || 'Your location');
@@ -1263,13 +2072,24 @@ setInterval(updateClock, 1000);
 })();
 
 // ── Re-render prayer box when the active prayer slot changes ─────────────
-// FIX: check window._cachedLat !== undefined (was checking !== null — never true before geoloc callback)
 setInterval(() => {
   if (!_prayerTimes) return;
-  const now    = new Date();
+  const _n = new Date();
+  // Don't re-render during special windows — flash interval manages display
+  const _aW2 = window._asrWarnStart, _aT2 = window._asrTime;
+  const _mW2 = window._maghribWarnStart, _mT2 = window._maghribTime;
+  const _iW2 = window._ishaWarnStart, _iT2 = window._ishaTime;
   const parsed = PRAYER_KEYS.map(k => parseTime(_prayerTimes[k]));
-  let ni = parsed.findIndex((p, i) => p > now && PRAYER_KEYS[i] !== 'Sunrise');
+  let ni = parsed.findIndex((p, i) => p > _n && PRAYER_KEYS[i] !== 'Sunrise');
   if (ni === -1) ni = 0;
+  if ((window._fajrTime && window._ishraqEnd && _n >= window._fajrTime && _n < window._ishraqEnd) ||
+      (window._dhuhrTime && window._asrWarnStart && _n >= window._dhuhrTime && _n < window._asrWarnStart) ||
+      (window._asrTime && window._maghribWarnStart && _n >= window._asrTime && _n < window._maghribWarnStart) ||
+      (window._maghribTime && window._ishaWarnStart && _n >= window._maghribTime && _n < window._ishaWarnStart) ||
+      (window._ishaTime && _n >= window._ishaTime) ||
+      (_aW2 && _aT2 && _n >= _aW2 && _n < _aT2) ||
+      (_mW2 && _mT2 && _n >= _mW2 && _n < _mT2) ||
+      (_iW2 && _iT2 && _n >= _iW2 && _n < _iT2)) { _lastNextPrayerIdx = ni; return; }
   if (ni !== _lastNextPrayerIdx) {
     _lastNextPrayerIdx = ni;
     if (window._cachedLat !== undefined) {
@@ -1285,11 +2105,52 @@ renderUpcoming();
 calcScore();
 initPrayers();
 
+// Schedule precise re-render at Maghrib and Fajr so decoration
+// appears/disappears exactly on time without polling
+function scheduleUpcomingRerender() {
+  if (!_prayerTimes) return;
+  const now_s = new Date();
+  const maghrib_s = parseTime(_prayerTimes.Maghrib);
+  const fajr_s    = parseTime(_prayerTimes.Fajr);
+  const tomorrowFajr_s = parseTomorrow(_prayerTimes.Fajr);
+
+  function applyFlash() {
+    renderUpcoming();
+    const now2 = new Date();
+    const afterMag2 = now2 > maghrib_s;
+    const flashTomorrow2 = afterMag2 && now2 < tomorrowFajr_s;
+    const flashToday2 = flashTomorrow2 || now2 < fajr_s;
+    document.querySelectorAll('.cd-tomorrow').forEach(el => el.classList.toggle('flash-alert', flashTomorrow2));
+    document.querySelectorAll('.cd-today').forEach(el => {
+      el.classList.toggle('flash-alert', flashToday2);
+      if (afterMag2) el.style.display = 'none';
+    });
+  }
+
+  // Fire exactly at Maghrib
+  const msToMaghrib = maghrib_s - now_s;
+  if (msToMaghrib > 0) setTimeout(() => {
+    // Stop all sparkle canvases immediately at Maghrib
+    document.querySelectorAll('.sparkle-canvas').forEach(c => { c._active = false; });
+    applyFlash();
+    scheduleUpcomingRerender();
+  }, msToMaghrib + 500);
+
+  // Fire exactly at Fajr (start of new day)
+  const msToFajr = fajr_s - now_s;
+  if (msToFajr > 0) setTimeout(() => { applyFlash(); scheduleUpcomingRerender(); }, msToFajr + 500);
+
+  // Fire at tomorrow's Fajr (end of tomorrow window)
+  const msToTomorrowFajr = tomorrowFajr_s - now_s;
+  if (msToTomorrowFajr > 0) setTimeout(applyFlash, msToTomorrowFajr + 500);
+}
+scheduleUpcomingRerender();
+
 // ── Suhoor / Iftar countdown banner ─────────────────────────────────────
 function updateCountdownBanner() {
   const wrap = document.getElementById('fast-countdown-wrap');
   if (!wrap || !_prayerTimes) return;
-  if (!isFastingToday()) { wrap.innerHTML = ''; return; }
+  if (!isFastingToday()) { wrap.innerHTML = ''; _setCountdownRight(null); return; }
 
   const now     = new Date();
   const fajr    = parseTime(_prayerTimes.Fajr);
@@ -1299,9 +2160,10 @@ function updateCountdownBanner() {
   if (now < fajr) {
     ms = fajr - now; icon = '⏳'; label = 'Suhoor ends';
   } else if (now < maghrib) {
-    ms = maghrib - now; icon = '🌙'; label = 'Iftar';
+    ms = maghrib - now; icon = '🌙'; label = 'Iftar begins';
   } else {
-    wrap.innerHTML = `<div style="margin-top:3px;font-size:12px;color:rgba(255,255,255,0.9);font-weight:600">✅ Alhamdulillah — fast complete</div>`;
+    wrap.innerHTML = `<div style="text-align:center;font-size:12px;color:#0f5c2e;font-weight:600">✅ Alhamdulillah — fast complete</div>`;
+    _setCountdownRight(null);
     return;
   }
 
@@ -1309,22 +2171,127 @@ function updateCountdownBanner() {
   const mm = String(Math.floor((ms % 3600000) / 60000)).padStart(2, '0');
   const ss = String(Math.floor((ms % 60000)   / 1000)).padStart(2, '0');
 
-  const isUrgent  = ms <= 30 * 60000;
-  const flashStyle = isUrgent ? 'animation:flash-alert 2s ease-in-out infinite;' : '';
-  // FIX: urgent color changed to a readable bold red that contrasts on the gold header
-  const timeColor  = isUrgent ? '#8b0000' : '#0f5c2e';
-  wrap.innerHTML = `<div style="display:flex;align-items:center;gap:5px;margin-top:3px;${flashStyle}">
-    <span style="font-size:12px">${icon}</span>
-    <span style="font-size:10px;font-weight:600;color:#0a3d1f;text-transform:uppercase;letter-spacing:.05em">${label} in</span>
-    <span style="font-size:16px;font-weight:700;color:${timeColor};font-variant-numeric:tabular-nums;line-height:1">${hh}:${mm}:${ss}</span>
-  </div>`;
+  // Iftar: label blinks 10 min before; Suhoor: label blinks 30 min before
+  const isIftar     = label === 'Iftar begins';
+  const blinkLabel  = isIftar ? ms <= 10 * 60000 : ms <= 30 * 60000;
+  const flashStyle  = blinkLabel ? 'animation:flash-alert 1s ease-in-out infinite;' : '';
+  const timeColor   = (isIftar ? ms <= 10 * 60000 : ms <= 30 * 60000) ? '#8b0000' : '#0f5c2e';
+
+  _setCountdownRight(null);
+  wrap.innerHTML = `<div style="text-align:center;white-space:nowrap;${flashStyle}"><span style="font-size:13px;font-weight:700;color:#0a3d1f;text-transform:uppercase;letter-spacing:.05em;">${icon} ${label} in </span><span style="font-size:16px;font-weight:800;color:${timeColor};font-variant-numeric:tabular-nums;">${hh}:${mm}:${ss}</span></div>`;
+}
+
+// Centered countdown — same mechanism for both Iftar and Suhoor
+function _setCountdownRight(html) {
+  const header  = document.querySelector('.header');
+  if (!header) return;
+  let   cdRight = document.getElementById('suhoor-right-cd');
+
+  if (!html) {
+    if (cdRight) cdRight.style.display = 'none';
+    return;
+  }
+
+  header.style.position = 'relative';
+
+  if (!cdRight) {
+    cdRight = document.createElement('div');
+    cdRight.id = 'suhoor-right-cd';
+    cdRight.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;white-space:nowrap;';
+    header.appendChild(cdRight);
+  }
+  cdRight.style.display = 'block';
+  cdRight.innerHTML = html;
+}
+// ── Export / Import fasting data ────────────────────────────────────────
+function exportFastingData() {
+  const data = {};
+  Object.keys(localStorage).forEach(k => {
+    if (k.startsWith('fast_') || k === 'hijri_offset') data[k] = localStorage.getItem(k);
+  });
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = 'fasting_data_' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importFastingData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      let count = 0;
+      Object.keys(data).forEach(k => {
+        if (k.startsWith('fast_') || k === 'hijri_offset') {
+          localStorage.setItem(k, data[k]);
+          count++;
+        }
+      });
+      calcScore();
+      renderUpcoming();
+      alert('Imported ' + count + ' entries successfully.');
+    } catch(err) {
+      alert('Invalid file. Please use a file exported from this app.');
+    }
+  };
+  reader.readAsText(file);
 }
 
 // ── PWA Service Worker ───────────────────────────────────────────────────
+// ── Push server URL ──────────────────────────────────────────────────────
+const PUSH_SERVER = 'https://islamic-fasting-push-server.onrender.com';
+setInterval(() => fetch(`${PUSH_SERVER}/`).catch(() => {}), 60 * 1000);
+const VAPID_PUBLIC_KEY = 'BOAaqCPlyrXIiDpWE55EWQFbao6e5jEAmDKeB91s8TUMKAXMpASUj59cIwFqGa25QSb3Q9wsed819mVkmR0Uqlw';
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+}
+
+async function registerPushSubscription() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+      });
+    }
+    // Send subscription + location + prayer times to server
+    const lat = window._cachedLat || 29.7604;
+    const lon = window._cachedLon || -95.3698;
+    await fetch(`${PUSH_SERVER}/subscribe`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ subscription: sub, lat, lon })
+    });
+    console.log('Push subscription registered with server ✓');
+  } catch (err) {
+    console.warn('Push subscription failed:', err);
+  }
+}
+
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('service-worker.js')
-      .then(reg => { console.log('SW registered:', reg.scope); updateNotifIcon(); })
+      .then(reg => {
+        console.log('SW registered:', reg.scope);
+        updateNotifIcon();
+        if (Notification.permission === 'granted') {
+          registerPushSubscription();
+          scheduleNotifications();
+          scheduleEveReminders();
+        }
+      })
       .catch(err => console.warn('SW registration failed:', err));
   });
 }
@@ -1356,8 +2323,10 @@ async function requestNotifPermission() {
   const perm = await Notification.requestPermission();
   updateNotifIcon();
   if (perm === 'granted') {
+    _notifScheduledDate = null;
     scheduleNotifications();
     scheduleEveReminders();
+    registerPushSubscription();
     new Notification('Islamic Fasting Calendar', {
       body: 'Notifications enabled! You will receive Suhoor, Iftar & eve-of-fast reminders.',
       icon: 'icon-192.png'
@@ -1375,6 +2344,7 @@ function scheduleNotifications() {
   const fajr    = parseTime(_prayerTimes.Fajr);
   const sunrise = parseTime(_prayerTimes.Sunrise);
   const maghrib = parseTime(_prayerTimes.Maghrib);
+  const isha    = parseTime(_prayerTimes.Isha);
   const fasting = isFastingToday();
 
   function schedule(ms, title, body) {
@@ -1389,7 +2359,8 @@ function scheduleNotifications() {
     schedule(maghrib - now, '🕌 Maghrib prayer time', `Maghrib is at ${to12hr(_prayerTimes.Maghrib)}.`);
   }
   // Ishraq — 25 min after sunrise, every day
-  schedule(sunrise - now + 25 * 60000, '🌅 Time to pray Ishraq', '25 minutes have passed since sunrise. Pray 2 rakats of Ishraq.');
+  // Isha — every day
+  schedule(isha - now, '🌙 Isha prayer time', `Isha is at ${to12hr(_prayerTimes.Isha)}.`);
 }
 
 function scheduleEveReminders() {
@@ -1454,6 +2425,54 @@ function scheduleEveReminders() {
   }
   setInterval(createSparkle, 180);
 })();
+
+const ALLAH_NAMES = [
+  ['الله','Allah','Allah'],['الرحمن','Ar-Rahman','The Most Gracious'],['الرحيم','Ar-Rahim','The Most Merciful'],
+  ['الملك','Al-Malik','The King'],['القدوس','Al-Quddus','The Most Holy'],['السلام','As-Salam','The Source of Peace'],
+  ['المؤمن','Al-Mumin','The Guardian of Faith'],['المهيمن','Al-Muhaymin','The Protector'],['العزيز','Al-Aziz','The Almighty'],
+  ['الجبار','Al-Jabbar','The Compeller'],['المتكبر','Al-Mutakabbir','The Supreme'],['الخالق','Al-Khaliq','The Creator'],
+  ['البارئ','Al-Bari','The Originator'],['المصور','Al-Musawwir','The Fashioner'],['الغفار','Al-Ghaffar','The Forgiving'],
+  ['القهار','Al-Qahhar','The Subduer'],['الوهاب','Al-Wahhab','The Bestower'],['الرزاق','Ar-Razzaq','The Provider'],
+  ['الفتاح','Al-Fattah','The Opener'],['العليم','Al-Alim','The All-Knowing'],['القابض','Al-Qabid','The Withholder'],
+  ['الباسط','Al-Basit','The Expander'],['الخافض','Al-Khafid','The Abaser'],['الرافع','Ar-Rafi','The Exalter'],
+  ['المعز','Al-Muizz','The Honourer'],['المذل','Al-Mudhill','The Humiliator'],['السميع','As-Sami','The All-Hearing'],
+  ['البصير','Al-Basir','The All-Seeing'],['الحكم','Al-Hakam','The Judge'],['العدل','Al-Adl','The Just'],
+  ['اللطيف','Al-Latif','The Subtle'],['الخبير','Al-Khabir','The All-Aware'],['الحليم','Al-Halim','The Forbearing'],
+  ['العظيم','Al-Azim','The Magnificent'],['الغفور','Al-Ghafur','The Forgiving'],['الشكور','Ash-Shakur','The Appreciative'],
+  ['العلي','Al-Ali','The Most High'],['الكبير','Al-Kabir','The Greatest'],['الحفيظ','Al-Hafiz','The Preserver'],
+  ['المقيت','Al-Muqit','The Nourisher'],['الحسيب','Al-Hasib','The Reckoner'],['الجليل','Al-Jalil','The Majestic'],
+  ['الكريم','Al-Karim','The Generous'],['الرقيب','Ar-Raqib','The Watchful'],['المجيب','Al-Mujib','The Responsive'],
+  ['الواسع','Al-Wasi','The All-Encompassing'],['الحكيم','Al-Hakim','The Wise'],['الودود','Al-Wadud','The Loving'],
+  ['المجيد','Al-Majid','The Most Glorious'],['الباعث','Al-Baith','The Resurrector'],['الشهيد','Ash-Shahid','The Witness'],
+  ['الحق','Al-Haqq','The Truth'],['الوكيل','Al-Wakil','The Trustee'],['القوي','Al-Qawi','The Strong'],
+  ['المتين','Al-Matin','The Firm'],['الولي','Al-Wali','The Protector'],['الحميد','Al-Hamid','The Praiseworthy'],
+  ['المحصي','Al-Muhsi','The Counter'],['المبدئ','Al-Mubdi','The Originator'],['المعيد','Al-Muid','The Restorer'],
+  ['المحيي','Al-Muhyi','The Giver of Life'],['المميت','Al-Mumit','The Taker of Life'],['الحي','Al-Hayy','The Ever-Living'],
+  ['القيوم','Al-Qayyum','The Self-Subsisting'],['الواجد','Al-Wajid','The Finder'],['الماجد','Al-Majid','The Noble'],
+  ['الواحد','Al-Wahid','The One'],['الأحد','Al-Ahad','The Unique'],['الصمد','As-Samad','The Eternal'],
+  ['القادر','Al-Qadir','The Capable'],['المقتدر','Al-Muqtadir','The All-Powerful'],['المقدم','Al-Muqaddim','The Expediter'],
+  ['المؤخر','Al-Muakhkhir','The Delayer'],['الأول','Al-Awwal','The First'],['الآخر','Al-Akhir','The Last'],
+  ['الظاهر','Az-Zahir','The Manifest'],['الباطن','Al-Batin','The Hidden'],['الوالي','Al-Wali','The Governor'],
+  ['المتعالي','Al-Mutaali','The Most Exalted'],['البر','Al-Barr','The Source of Goodness'],['التواب','At-Tawwab','The Acceptor of Repentance'],
+  ['المنتقم','Al-Muntaqim','The Avenger'],['العفو','Al-Afuw','The Pardoner'],['الرؤوف','Ar-Rauf','The Compassionate'],
+  ['مالك الملك','Malik-ul-Mulk','Owner of All'],['ذو الجلال','Dhul-Jalal','Lord of Majesty'],['المقسط','Al-Muqsit','The Equitable'],
+  ['الجامع','Al-Jami','The Gatherer'],['الغني','Al-Ghani','The Self-Sufficient'],['المغني','Al-Mughni','The Enricher'],
+  ['المانع','Al-Mani','The Preventer'],['الضار','Ad-Darr','The Distresser'],['النافع','An-Nafi','The Benefiter'],
+  ['النور','An-Nur','The Light'],['الهادي','Al-Hadi','The Guide'],['البديع','Al-Badi','The Incomparable'],
+  ['الباقي','Al-Baqi','The Everlasting'],['الوارث','Al-Warith','The Inheritor'],['الرشيد','Ar-Rashid','The Guide to Right'],
+  ['الصبور','As-Sabur','The Patient']
+];
+let _allahIdx = 0;
+function _cycleAllahName() {
+  const el = document.getElementById('allah-name-display');
+  if (!el) return;
+  const [arabic, translit, english] = ALLAH_NAMES[_allahIdx % ALLAH_NAMES.length];
+  el.innerHTML = `<span style="font-family:serif;font-size:17px">${arabic}</span> · ${english}`;
+  _allahIdx++;
+}
+_cycleAllahName();
+setInterval(_cycleAllahName, 2000);
+
 </script>
 </body>
 </html>
