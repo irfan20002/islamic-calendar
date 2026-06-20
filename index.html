@@ -79,15 +79,24 @@
   .day-badge { font-size: 12px; padding: 4px 12px; border-radius: 20px; background: #E1F5EE; color: #085041; font-weight: 500; }
   .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
   .score-box { background: linear-gradient(135deg, #0F6E56, #1D9E75); border-radius: var(--border-radius-lg); padding: 1rem 1.25rem; margin-bottom: 1rem; color: white; }
-  .score-title { font-size: 11px; font-weight: 500; opacity: 0.8; text-transform: uppercase; letter-spacing: .06em; margin-bottom: .5rem; }
-  .score-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-  .score-item { text-align: center; background: rgba(255,255,255,0.15); border-radius: var(--border-radius-md); padding: 8px 4px; }
-  .score-num { font-size: 22px; font-weight: 600; line-height: 1; }
-  .score-label { font-size: 10px; opacity: 0.8; margin-top: 3px; }
-  .score-bar-wrap { margin-top: .75rem; }
-  .score-bar-label { display: flex; justify-content: space-between; font-size: 11px; opacity: 0.8; margin-bottom: 4px; }
-  .score-bar { height: 6px; background: rgba(255,255,255,0.25); border-radius: 3px; overflow: hidden; }
-  .score-bar-fill { height: 100%; background: white; border-radius: 3px; transition: width 0.5s; }
+  .score-title { font-size: 11px; font-weight: 500; opacity: 0.8; text-transform: uppercase; letter-spacing: .06em; margin-bottom: .75rem; }
+  .score-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: .75rem; }
+  .score-item { background: rgba(255,255,255,0.15); border-radius: var(--border-radius-md); padding: 10px 12px; }
+  .score-item-label { font-size: 13px; font-weight: 600; opacity: 0.95; margin-bottom: 10px; text-align: center; display: block; }
+  .score-delta { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 10px; float: right; }
+  .score-delta.up { background: rgba(255,255,255,0.25); }
+  .score-delta.down { background: rgba(0,0,0,0.2); }
+  .score-delta.same { background: rgba(255,255,255,0.1); }
+  .score-bars-wrap { display: flex; gap: 16px; align-items: flex-end; height: 70px; margin-top: 4px; }
+  .score-bar-wrap { display: flex; flex-direction: column; align-items: center; gap: 3px; height: 100%; justify-content: flex-end; width: 36px; }
+  .score-bar-col { width: 28px; border-radius: 4px 4px 0 0; min-height: 4px; transition: height 0.4s; }
+  .score-bar-col.cur { background: white; }
+  .score-bar-col.prev { background: rgba(255,255,255,0.4); }
+  .score-bar-num { font-size: 18px; font-weight: 700; line-height: 1; }
+  .score-bar-sublabel { font-size: 11px; opacity: 0.75; text-align: center; margin-top: 3px; }
+  .score-streak { display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.15); border-radius: var(--border-radius-md); padding: 8px 12px; }
+  .score-streak-left { font-size: 13px; font-weight: 500; }
+  .score-streak-right { font-size: 11px; opacity: 0.8; }
   .prayer-box { background: var(--color-background-secondary); border-radius: var(--border-radius-lg); padding: 1rem 1.25rem; margin-bottom: 1.5rem; }
   .prayer-next { display: flex; align-items: center; gap: 10px; margin-bottom: .75rem; }
   .prayer-next-name { font-size: 13px; color: var(--color-text-secondary); }
@@ -119,14 +128,40 @@
   <div class="score-box" id="score-box">
     <div class="score-title">🌙 My fasting score</div>
     <div class="score-grid">
-      <div class="score-item"><div class="score-num" id="sc-today">0</div><div class="score-label">Today</div></div>
-      <div class="score-item"><div class="score-num" id="sc-week">0</div><div class="score-label">This week</div></div>
-      <div class="score-item"><div class="score-num" id="sc-month">0</div><div class="score-label">This month</div></div>
-      <div class="score-item"><div class="score-num" id="sc-year">0</div><div class="score-label">This year</div></div>
+      <div class="score-item">
+        <div class="score-item-label" id="sc-month-label">Month <span class="score-delta" id="sc-month-delta"></span></div>
+        <div class="score-bars-wrap">
+          <div class="score-bar-wrap">
+            <div class="score-bar-num" id="sc-month-prev-num">0</div>
+            <div class="score-bar-col prev" id="sc-month-bar-prev" style="height:3px"></div>
+            <div class="score-bar-sublabel" id="sc-month-prev-label">Last</div>
+          </div>
+          <div class="score-bar-wrap">
+            <div class="score-bar-num" id="sc-month">0</div>
+            <div class="score-bar-col cur" id="sc-month-bar-cur" style="height:3px"></div>
+            <div class="score-bar-sublabel" id="sc-month-cur-label">This</div>
+          </div>
+        </div>
+      </div>
+      <div class="score-item">
+        <div class="score-item-label" id="sc-year-label">Year <span class="score-delta" id="sc-year-delta"></span></div>
+        <div class="score-bars-wrap">
+          <div class="score-bar-wrap">
+            <div class="score-bar-num" id="sc-year-prev-num">0</div>
+            <div class="score-bar-col prev" id="sc-year-bar-prev" style="height:3px"></div>
+            <div class="score-bar-sublabel" id="sc-year-prev-label">Last</div>
+          </div>
+          <div class="score-bar-wrap">
+            <div class="score-bar-num" id="sc-year">0</div>
+            <div class="score-bar-col cur" id="sc-year-bar-cur" style="height:3px"></div>
+            <div class="score-bar-sublabel" id="sc-year-cur-label">This</div>
+          </div>
+        </div>
+      </div>
     </div>
-    <div class="score-bar-wrap">
-      <div class="score-bar-label"><span id="sc-streak-label">🔥 Streak</span><span id="sc-streak-val">0 days</span></div>
-      <div class="score-bar"><div class="score-bar-fill" id="sc-bar" style="width:0%"></div></div>
+    <div class="score-streak">
+      <span class="score-streak-left" id="sc-streak-label">⭐ Streak: 0 days</span>
+      <span class="score-streak-right" id="sc-streak-right">Best: 0</span>
     </div>
   </div>
 
@@ -175,7 +210,7 @@
     <div class="section">
       <div class="section-title">Annual fasts</div>
       <div class="tip"><strong>Day of Arafah (9 Dhul Hijjah)</strong><br>Expiates sins of two years — the year before and the year after. The greatest voluntary fast.</div>
-      <div class="tip"><strong>Tasu'a + Ashura (9–10 Muharram)</strong><br>Expiates sins of the past year. Fast both days to differ from Jewish practice.</div>
+      <div class="tip"><strong>Tasua + Ashura (9–10 Muharram)</strong><br>Expiates sins of the past year. Fast both days to differ from Jewish practice.</div>
       <div class="tip"><strong>6 days of Shawwal</strong><br>Combined with Ramadan, equals reward of fasting a full year.</div>
     </div>
     <div class="section">
@@ -285,7 +320,7 @@ function generateFasts(fromHY, toHY) {
     // Tasu'a: 9 Muharram of NEXT year
     const nextHY = hy + 1;
     const tasua = hToG(nextHY, 1, 9);
-    fasts.push({ name:"Tasu'a", dates:[tasua], hijri:`9 Muharram ${nextHY}`, icon:"ti-moon-stars", note:"Day before Ashura", color:"#E1F5EE", iconColor:"#0F6E56" });
+    fasts.push({ name:"Tasua", dates:[tasua], hijri:`9 Muharram ${nextHY}`, icon:"ti-moon-stars", note:"Day before Ashura", color:"#E1F5EE", iconColor:"#0F6E56" });
 
     // Ashura: 10 Muharram of NEXT year
     const ashura = hToG(nextHY, 1, 10);
@@ -341,47 +376,80 @@ function getNextWeeklyDays(n) {
   return results;
 }
 
-function calcScore() {
-  let today = 0, week = 0, month = 0, year = 0, streak = 0, maxStreak = 0;
-  const now = new Date(); now.setHours(0,0,0,0);
-  const weekAgo = new Date(now); weekAgo.setDate(now.getDate()-7);
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const yearStart = new Date(now.getFullYear(), 0, 1);
+function countFastsInHijriPeriod(doneDates, hy, hm) {
+  // Count fasts whose Hijri month/year match
+  return doneDates.filter(d => {
+    const h = gToH(d);
+    if(hm !== null) return h.year === hy && h.month === hm;
+    return h.year === hy;
+  }).length;
+}
 
-  // Get all localStorage keys for fasts
+function setDelta(elId, barCurId, barPrevId, cur, prev) {
+  const diff = cur - prev;
+  const deltaEl = document.getElementById(elId);
+  const maxH = 50;
+  const maxVal = Math.max(cur, prev, 1);
+  document.getElementById(barCurId).style.height = Math.max(3, Math.round((cur/maxVal)*maxH)) + 'px';
+  document.getElementById(barPrevId).style.height = Math.max(3, Math.round((prev/maxVal)*maxH)) + 'px';
+  if(diff > 0){ deltaEl.textContent = '↑ +'+diff; deltaEl.className='score-delta up'; }
+  else if(diff < 0){ deltaEl.textContent = '↓ '+diff; deltaEl.className='score-delta down'; }
+  else { deltaEl.textContent = '= 0'; deltaEl.className='score-delta same'; }
+}
+
+function calcScore() {
+  const now = new Date(); now.setHours(0,0,0,0);
+  const todayH = gToH(now);
+  const curHY = todayH.year;
+  const curHM = todayH.month;
+
+  // Previous Hijri month
+  const prevHM = curHM === 1 ? 12 : curHM - 1;
+  const prevHMY = curHM === 1 ? curHY - 1 : curHY;
+  const prevHY = curHY - 1;
+
+  // Get all checked fasts from localStorage
   const keys = Object.keys(localStorage).filter(k => k.startsWith('fast_') && localStorage.getItem(k) === '1');
   const doneDates = keys.map(k => {
-    const parts = k.split('_');
-    const dateStr = parts.slice(2).join('_');
+    const dateStr = k.slice(-15);
     return new Date(dateStr);
-  }).filter(d => !isNaN(d)).sort((a,b) => a-b);
+  }).filter(d => !isNaN(d.getTime())).sort((a,b) => a-b);
 
-  doneDates.forEach(d => {
-    if(d.toDateString() === now.toDateString()) today++;
-    if(d >= weekAgo) week++;
-    if(d >= monthStart) month++;
-    if(d >= yearStart) year++;
+  const thisMonth = countFastsInHijriPeriod(doneDates, curHY, curHM);
+  const lastMonth = countFastsInHijriPeriod(doneDates, prevHMY, prevHM);
+  const thisYear  = countFastsInHijriPeriod(doneDates, curHY, null);
+  const lastYear  = countFastsInHijriPeriod(doneDates, prevHY, null);
+
+  // Streak
+  const dateSet = new Set(doneDates.map(d => d.toDateString()));
+  let streak = 0, best = 0, tempStreak = 0;
+  const cur2 = new Date(now);
+  while(dateSet.has(cur2.toDateString())){ streak++; cur2.setDate(cur2.getDate()-1); }
+  // Best streak
+  const sorted = doneDates.map(d => d.getTime()).sort((a,b)=>a-b);
+  let prev2 = null;
+  sorted.forEach(t => {
+    if(prev2 && t - prev2 <= 86400000*1.5) tempStreak++;
+    else tempStreak = 1;
+    if(tempStreak > best) best = tempStreak;
+    prev2 = t;
   });
 
-  // Calculate streak (consecutive days with at least one fast)
-  const dateSet = new Set(doneDates.map(d => d.toDateString()));
-  let cur = new Date(now);
-  while(dateSet.has(cur.toDateString())) {
-    streak++;
-    cur.setDate(cur.getDate()-1);
-  }
-
-  // Monthly goal: ~12 fasts/month (3 white days + ~8 Mon/Thu + 1 special)
-  const monthGoal = 12;
-  const pct = Math.min(100, Math.round((month/monthGoal)*100));
-
-  document.getElementById('sc-today').textContent = today;
-  document.getElementById('sc-week').textContent = week;
-  document.getElementById('sc-month').textContent = month;
-  document.getElementById('sc-year').textContent = year;
-  document.getElementById('sc-streak-val').textContent = streak + (streak===1?' day':' days');
-  document.getElementById('sc-streak-label').textContent = streak > 0 ? '🔥 Streak' : '⭐ Streak';
-  document.getElementById('sc-bar').style.width = pct + '%';
+  // Update UI
+  document.getElementById('sc-month-label').innerHTML = HIJRI_MONTHS[curHM-1] + ' <span class="score-delta" id="sc-month-delta"></span>';
+  document.getElementById('sc-year-label').innerHTML = curHY + ' AH <span class="score-delta" id="sc-year-delta"></span>';
+  document.getElementById('sc-month').textContent = thisMonth;
+  document.getElementById('sc-year').textContent = thisYear;
+  document.getElementById('sc-month-prev-num').textContent = lastMonth;
+  document.getElementById('sc-year-prev-num').textContent = lastYear;
+  document.getElementById('sc-month-prev-label').textContent = HIJRI_MONTHS_SHORT[prevHM-1];
+  document.getElementById('sc-month-cur-label').textContent = HIJRI_MONTHS_SHORT[curHM-1];
+  document.getElementById('sc-year-prev-label').textContent = prevHY + ' AH';
+  document.getElementById('sc-year-cur-label').textContent = curHY + ' AH';
+  setDelta('sc-month-delta','sc-month-bar-cur','sc-month-bar-prev', thisMonth, lastMonth);
+  setDelta('sc-year-delta','sc-year-bar-cur','sc-year-bar-prev', thisYear, lastYear);
+  document.getElementById('sc-streak-label').textContent = (streak>0?'🔥':'⭐') + ' Streak: ' + streak + (streak===1?' day':' days');
+  document.getElementById('sc-streak-right').textContent = 'Best: ' + best;
 }
 
 function renderUpcoming() {
