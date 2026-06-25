@@ -1338,8 +1338,8 @@ function renderPrayers(times, city) {
   const box = document.getElementById('prayer-box');
   box.innerHTML = `
     <div style="text-align:right;margin-bottom:2px;position:relative">
-      <div id="prayer-method-label" onclick="togglePrayerDropdown()" style="font-size:9px;color:var(--color-text-tertiary);cursor:pointer;white-space:nowrap;user-select:none;display:inline-block"></div>
-      <div id="prayer-dropdown" style="display:none;position:absolute;right:0;top:100%;margin-top:2px;background:#fff;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,0.18);z-index:999;min-width:220px;overflow:hidden;text-align:left">
+      <div id="prayer-method-label" onclick="togglePrayerDropdown()" style="font-size:11px;color:#cc0000;cursor:pointer;white-space:nowrap;user-select:none;display:inline-block;font-weight:600"></div>
+      <div id="prayer-dropdown" style="display:none;position:absolute;right:0;bottom:100%;margin-bottom:4px;background:#fff;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,0.18);z-index:999;min-width:220px;overflow:hidden;text-align:left">
         <div style="padding:8px 10px 4px;font-size:10px;font-weight:700;color:#888;border-bottom:1px solid #f0f0f0">CALCULATION METHOD</div>
         <div id="prayer-method-list" style="max-height:220px;overflow-y:auto"></div>
       </div>
