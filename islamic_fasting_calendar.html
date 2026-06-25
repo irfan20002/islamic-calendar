@@ -277,6 +277,13 @@
         <button id="notif-btn" onclick="requestNotifPermission()" title="Enable notifications" style="font-family:var(--font-sans);background:none;border:none;cursor:pointer;flex-shrink:0;padding:2px;margin-left:4px">
           <i class="ti ti-bell" id="notif-icon" style="font-size:18px;color:var(--color-text-tertiary)"></i>
         </button>
+        <button onclick="exportFastingData()" title="Export fasting data" style="font-family:var(--font-sans);background:none;border:none;cursor:pointer;flex-shrink:0;padding:2px">
+          <i class="ti ti-download" style="font-size:18px;color:var(--color-text-tertiary)"></i>
+        </button>
+        <label title="Import fasting data" style="cursor:pointer;flex-shrink:0;padding:2px;margin:0">
+          <i class="ti ti-upload" style="font-size:18px;color:var(--color-text-tertiary)"></i>
+          <input type="file" accept=".json" onchange="importFastingData(event)" style="display:none">
+        </label>
       </div>
       <div class="dash-tiles">
         <!-- Prev month -->
@@ -399,14 +406,6 @@
   <div style="display:flex;align-items:center;gap:10px;background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:.625rem .875rem;margin-top:.75rem">
     <span style="font-size:18px;background:#1a5c3a;color:white;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:700">"</span>
     <span style="font-size:12px;color:var(--color-text-secondary);flex:1;line-height:1.5">"Whoever fasts in Ramadan out of faith and seeking reward, his past sins will be forgiven." <em style="color:var(--color-text-tertiary)">[Bukhari &amp; Muslim]</em></span>
-    <button onclick="exportFastingData()" title="Export fasting data" style="font-family:var(--font-sans);background:none;border:none;cursor:pointer;flex-shrink:0;padding:2px">
-      <i class="ti ti-download" style="font-size:20px;color:var(--color-text-tertiary)"></i>
-    </button>
-    <label title="Import fasting data" style="cursor:pointer;flex-shrink:0;padding:2px;margin:0">
-      <i class="ti ti-upload" style="font-size:20px;color:var(--color-text-tertiary)"></i>
-      <input type="file" accept=".json" onchange="importFastingData(event)" style="display:none">
-    </label>
-
   </div>
 
 </div><!-- /app -->
@@ -421,6 +420,9 @@ let _flashInterval = null;
 let _fajrWarnToggle = false;
 let _fajrWarnInterval = null;
 let _lastNextPrayerIdx = -1;
+let _notifScheduledDate = null;
+let _prayerMethod = parseInt(localStorage.getItem('prayer_method') || '2');
+let _prayerSchool = parseInt(localStorage.getItem('prayer_school') || '0');
 
 // Dynamic today — always returns midnight of the current day
 // Use getToday() instead of TODAY everywhere except initialisation
@@ -536,6 +538,43 @@ function hToG(hy, hm, hd) {
   return fromJD(hijriToJD(hy, hm, hd));
 }
 
+// ── Moon-sighting corrected conversions ─────────────────────────────────
+// When the API tells us today's Hijri date, we use it as an anchor.
+// All other Hijri↔Gregorian conversions are computed relative to that anchor
+// by counting days, which is exact regardless of algorithmic drift.
+// _anchorGreg: Gregorian Date object for the known anchor
+// _anchorHijriDayNum: absolute Hijri day number for the anchor
+function _hijriAbsDay(hy, hm, hd) {
+  // Approximate absolute Hijri day count (months alternate 30/29 days)
+  return Math.round(hijriToJD(hy, hm, hd) - hijriToJD(1, 1, 1));
+}
+
+function hToGCorrected(hy, hm, hd) {
+  if (!window._anchorGreg) return hToG(hy, hm, hd);
+  const deltaDays = _hijriAbsDay(hy, hm, hd) - window._anchorHijriDayNum;
+  const d = new Date(window._anchorGreg);
+  d.setDate(d.getDate() + deltaDays);
+  return d;
+}
+
+function gToHCorrected(date) {
+  if (!window._anchorGreg) return gToH(date);
+  const d = new Date(date); d.setHours(0, 0, 0, 0);
+  const deltaDays = Math.round((d - window._anchorGreg) / 86400000);
+  const anchorAbsDay = window._anchorHijriDayNum + deltaDays;
+  // Convert absolute Hijri day back to year/month/day
+  const anchorJD = hijriToJD(1, 1, 1) + anchorAbsDay;
+  return jdToHijri(anchorJD);
+}
+
+function setHijriAnchor(apiYear, apiMonth, apiDay) {
+  // The API is telling us today's Hijri date — so the anchor Gregorian date is simply today.
+  // Do NOT use hToG() here — that's the algorithm which may be wrong by 1-2 days.
+  window._anchorGreg = new Date(getToday());
+  window._anchorGreg.setHours(0, 0, 0, 0);
+  window._anchorHijriDayNum = _hijriAbsDay(apiYear, apiMonth, apiDay);
+}
+
 function dateRange(start, days) {
   const arr = [];
   for (let i = 0; i < days; i++) {
@@ -547,8 +586,8 @@ function dateRange(start, days) {
 }
 
 // ── Fast data generation ────────────────────────────────────────────────
-// FIX: Skip Ayyam al-Beed for Ramadan (month 9) — those are obligatory Ramadan days,
-//      not separate voluntary fasts.
+// Uses hToGCorrected so dates automatically match moon-sighted Hijri once
+// the API anchor is set — no manual offset needed.
 function generateFasts(fromHY, toHY) {
   const fasts = [];
   for (let hy = fromHY; hy <= toHY; hy++) {
@@ -556,17 +595,17 @@ function generateFasts(fromHY, toHY) {
     // 6 days of Shawwal: 2–7 Shawwal
     fasts.push({
       name: '6 days of Shawwal',
-      dates: dateRange(hToG(hy, 10, 2), 6),
+      dates: dateRange(hToGCorrected(hy, 10, 2), 6),
       hijri: `2–7 Shawwal ${hy}`,
       icon: 'ti-star', note: 'After Ramadan', color: '#E1F5EE', iconColor: '#0F6E56'
     });
 
     // Ayyam al-Beed for all months except Ramadan (9)
     for (let hm = 1; hm <= 12; hm++) {
-      if (hm === 9) continue; // Ramadan fasts are obligatory — skip Ayyam al-Beed entry
+      if (hm === 9) continue;
       fasts.push({
         name: `Ayyam al-Beed — ${HIJRI_MONTHS[hm - 1]}`,
-        dates: dateRange(hToG(hy, hm, 13), 3),
+        dates: dateRange(hToGCorrected(hy, hm, 13), 3),
         hijri: `13–15 ${HIJRI_MONTHS[hm - 1]} ${hy}`,
         icon: 'ti-moon', note: 'White days', color: '#E1F5EE', iconColor: '#0F6E56'
       });
@@ -575,29 +614,28 @@ function generateFasts(fromHY, toHY) {
     // Day of Arafah: 9 Dhul Hijjah
     fasts.push({
       name: 'Day of Arafah',
-      dates: [hToG(hy, 12, 9)],
+      dates: [hToGCorrected(hy, 12, 9)],
       hijri: `9 Dhul Hijjah ${hy}`,
       icon: 'ti-heart', note: 'Expiates 2 years', color: '#E1F5EE', iconColor: '#0F6E56'
     });
 
-    // Tasua, Ashura, 11 Muharram — generate for NEXT year's Muharram
-    // (so the current year's Muharram comes from hy-1 iteration)
+    // Tasua, Ashura, 11 Muharram
     const nextHY = hy + 1;
     fasts.push({
       name: 'Tasua',
-      dates: [hToG(nextHY, 1, 9)],
+      dates: [hToGCorrected(nextHY, 1, 9)],
       hijri: `9 Muharram ${nextHY}`,
       icon: 'ti-moon-stars', note: 'Day before Ashura', color: '#E1F5EE', iconColor: '#0F6E56'
     });
     fasts.push({
       name: 'Ashura',
-      dates: [hToG(nextHY, 1, 10)],
+      dates: [hToGCorrected(nextHY, 1, 10)],
       hijri: `10 Muharram ${nextHY}`,
       icon: 'ti-moon-stars', note: 'Expiates 1 year', color: '#E1F5EE', iconColor: '#0F6E56'
     });
     fasts.push({
       name: '11 Muharram fast',
-      dates: [hToG(nextHY, 1, 11)],
+      dates: [hToGCorrected(nextHY, 1, 11)],
       hijri: `11 Muharram ${nextHY}`,
       icon: 'ti-moon-stars', note: 'Recommended with Ashura', color: '#E1F5EE', iconColor: '#0F6E56'
     });
@@ -606,33 +644,38 @@ function generateFasts(fromHY, toHY) {
 }
 
 const _initTodayH = gToH(getToday());
-const FASTS = generateFasts(_initTodayH.year - 1, _initTodayH.year + 2);
+let FASTS = generateFasts(_initTodayH.year - 1, _initTodayH.year + 2);
 
-// ── Hijri offset (moon-sighting adjustment) ─────────────────────────────
+// ── Hijri offset (manual fine-tuning only) ──────────────────────────────
+// The primary correction is automatic via the API anchor (setHijriAnchor).
+// These buttons allow ±1/2 day fine-tuning on top if needed.
 let hijriOffset = parseInt(localStorage.getItem('hijri_offset') || '0');
 
 function getAdjustedHijri(date) {
-  // For today's date, use API Hijri if available (correct moon sighting)
-  const d = new Date(date); d.setHours(0,0,0,0);
-  const today = getToday();
-  if (window._apiHijriDay && d.getTime() === today.getTime() && hijriOffset === 0) {
-    return { day: window._apiHijriDay, month: window._apiHijriMonth, year: window._apiHijriYear };
-  }
   const adjusted = new Date(date);
   adjusted.setDate(adjusted.getDate() + hijriOffset);
-  return gToH(adjusted);
+  return gToHCorrected(adjusted);
 }
 
 function updateHijriHeader() {
-  // Update offset label in the prayer box (if rendered)
   const lbl = document.getElementById('hijri-offset-label');
   if (lbl) lbl.textContent = hijriOffset === 0 ? '0' : (hijriOffset > 0 ? `+${hijriOffset}` : `${hijriOffset}`);
+}
+
+function _rebuildFasts() {
+  const _todayH = gToHCorrected(getToday());
+  FASTS = generateFasts(_todayH.year - 1, _todayH.year + 2);
+  _fastDateCache = null;
+  renderUpcoming();
+  calcScore();
+  if (document.getElementById('tab-calendar') && document.getElementById('tab-calendar').style.display !== 'none') renderCalendar();
 }
 
 function adjustHijri(delta) {
   hijriOffset = Math.max(-2, Math.min(2, hijriOffset + delta));
   localStorage.setItem('hijri_offset', hijriOffset);
   updateHijriHeader();
+  _rebuildFasts();
   const dlH2 = document.getElementById('prayer-date-hijri');
   const dlG2 = document.getElementById('prayer-date-greg');
   if (dlH2 || dlG2) {
@@ -702,20 +745,23 @@ function calcScore() {
   const prevHMY = curHM === 1 ? curHY - 1 : curHY;
   const prevHY  = curHY - 1;
 
-  // FIX: robust key parsing — the date is always the last segment after the last underscore
-  // that resolves to a valid date. We use the fact that toDateString() never contains underscores.
   const keys = Object.keys(localStorage).filter(k => k.startsWith('fast_') && localStorage.getItem(k) === '1');
-  const doneDates = keys.map(k => {
-    // Find the last underscore-prefixed valid Date portion
+  const _rawDates = keys.map(k => {
     const parts = k.split('_');
-    // Try progressively combining tail parts until we get a valid date
     for (let i = parts.length - 1; i >= 1; i--) {
       const candidate = parts.slice(i).join('_');
       const d = new Date(candidate);
       if (!isNaN(d.getTime())) return d;
     }
     return null;
-  }).filter(d => d !== null).sort((a, b) => a - b);
+  }).filter(d => d !== null);
+  // Deduplicate by date — multiple fasts on same day count as one
+  const _seen = new Set();
+  const doneDates = _rawDates.filter(d => {
+    const s = d.toDateString();
+    if (_seen.has(s)) return false;
+    _seen.add(s); return true;
+  }).sort((a, b) => a - b);
 
   const thisMonth = countFastsInHijriPeriod(doneDates, curHY,   curHM);
   const lastMonth = countFastsInHijriPeriod(doneDates, prevHMY, prevHM);
@@ -834,6 +880,8 @@ function getNextWeeklyDays(n) {
 
 function renderUpcoming() {
   const list = document.getElementById('fast-list');
+  // Stop any running sparkle canvas animations before clearing the DOM
+  list.querySelectorAll('.sparkle-canvas').forEach(c => { c._active = false; });
   list.innerHTML = '';
 
   // Past weekly fasts — last 52 weeks
@@ -866,14 +914,20 @@ function renderUpcoming() {
   const todayH         = gToH(getToday());
   const startDate      = new Date(getToday()); startDate.setFullYear(startDate.getFullYear() - 1);
   const endOfHijriYear = hToG(todayH.year + 1, 12, 29);
+
+  // Suppress weekly cards when a named fast falls on the same date
+  const namedFastDates = new Set();
+  FASTS.forEach(f => f.dates.forEach(d => namedFastDates.add(d.toDateString())));
+
   const all = [...FASTS, ...pastWeekly, ...todayWeekly, ...weekly].sort((a, b) => firstDate(a) - firstDate(b));
 
   let firstUpcoming = true;
   all.forEach(f => {
     const last  = lastDate(f);
     const first = firstDate(f);
-    if (last < startDate)        return;  // older than 1 year ago
+    if (last < startDate)        return;
     if (first > endOfHijriYear)  return;
+    if (f.weekly && namedFastDates.has(first.toDateString())) return;
 
     const diff  = Math.ceil((first - getToday()) / 86400000);
     const card  = document.createElement('div');
@@ -902,8 +956,8 @@ function renderUpcoming() {
     if (isDone) card.classList.add('done');
 
     const isFuture = diff > 0;
-    // Show decoration: during today's fast OR during tomorrow's eve window
-    const isTodayFast = (diff === 0 && !afterMag) || (diff === 1 && inTomorrowWindow);
+    // Show decoration: during today's fast OR tomorrow's eve window OR mid-period of multi-day fast
+    const isTodayFast = (diff === 0 && !afterMag) || (diff === 1 && inTomorrowWindow) || (diff < 0 && getToday() <= lastDate(f));
     if (isTodayFast) card.classList.add('today-fast');
     const REMINDERS = [
       '🤲 May Allah accept it',
@@ -1149,30 +1203,13 @@ function renderIslamicDayCountdown() {
     { hm: 12, hd: 10, label: 'Eid al-Adha',       emoji: '🎉', color: '#E74C3C' },
   ];
 
-  // Use API Hijri date if available
-  const todayH = (window._apiHijriDay && hijriOffset === 0)
-    ? { year: window._apiHijriYear, month: window._apiHijriMonth, day: window._apiHijriDay }
-    : gToH(getToday());
-
-  // API offset: difference in days between API Hijri day and algorithmic Hijri day
-  // e.g. API says day=2, algo says day=1 → offset = -(2-1) = -1 (events shift back 1 day)
-  const _apiOffsetDays = (window._apiHijriDay && hijriOffset === 0) ? (() => {
-    const algoH = gToH(getToday());
-    // If same month/year, simple day difference
-    if (algoH.month === window._apiHijriMonth && algoH.year === window._apiHijriYear) {
-      return -(window._apiHijriDay - algoH.day);
-    }
-    // Different month: use Gregorian difference
-    const algoGreg = hToG(algoH.year, algoH.month, algoH.day);
-    const apiGreg  = hToG(window._apiHijriYear, window._apiHijriMonth, window._apiHijriDay);
-    return Math.round((algoGreg - apiGreg) / 86400000);
-  })() : 0;
+  // Use corrected Hijri for today — consistent with calendar and fast list
+  const todayH = getAdjustedHijri(getToday());
 
   let next = null, minDays = Infinity;
   for (const hy of [todayH.year, todayH.year + 1]) {
     for (const day of DAYS) {
-      const greg = hToG(hy, day.hm, day.hd);
-      greg.setDate(greg.getDate() + _apiOffsetDays);
+      const greg = hToGCorrected(hy, day.hm, day.hd);
       greg.setHours(0, 0, 0, 0);
       const isToday = (todayH.year === hy && todayH.month === day.hm && todayH.day === day.hd);
       const diff = isToday ? 0 : Math.ceil((greg - getToday()) / 86400000);
@@ -1317,6 +1354,18 @@ function renderPrayers(times, city) {
           <div style="font-size:13px;color:#E1F5EE;margin-bottom:1px" id="next-prayer-label">${boxLabel}</div>
           <div style="font-size:17px;font-weight:700;color:#ffffff;line-height:1.1;white-space:nowrap" id="next-prayer-name">${boxName}</div>
           <div style="font-size:14px;color:#E1F5EE;font-weight:600;margin-top:2px" id="next-prayer-countdown">${boxCd}</div>
+          <div style="position:relative;margin-top:4px;text-align:right">
+            <div id="prayer-method-label" onclick="togglePrayerDropdown()" style="font-size:9px;color:rgba(255,255,255,0.6);cursor:pointer;white-space:nowrap;user-select:none"></div>
+            <div id="prayer-dropdown" style="display:none;position:absolute;right:0;top:100%;margin-top:4px;background:#fff;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,0.18);z-index:999;min-width:220px;overflow:hidden;text-align:left">
+              <div style="padding:8px 10px 4px;font-size:10px;font-weight:700;color:#888;border-bottom:1px solid #f0f0f0">CALCULATION METHOD</div>
+              <div id="prayer-method-list" style="max-height:180px;overflow-y:auto"></div>
+              <div style="padding:4px 10px 6px;border-top:1px solid #f0f0f0;font-size:10px;font-weight:700;color:#888;margin-top:2px">ASR SCHOOL</div>
+              <div style="display:flex;gap:0;padding:0 10px 10px">
+                <button id="school-shafi-btn" onclick="selectPrayerSchool(0)" style="font-family:var(--font-sans);flex:1;padding:6px 4px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid #1D9E75;border-radius:6px 0 0 6px;background:#fff;color:#1D9E75;transition:all .15s">Shafi/Maliki/Hanbali</button>
+                <button id="school-hanafi-btn" onclick="selectPrayerSchool(1)" style="font-family:var(--font-sans);flex:1;padding:6px 4px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid #1D9E75;border-left:none;border-radius:0 6px 6px 0;background:#fff;color:#1D9E75;transition:all .15s">Hanafi</button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1799,9 +1848,7 @@ function renderPrayers(times, city) {
     if (_restoreNext && _box) {
       const _rH = Math.floor(_rMs / 3600000);
       const _rM = Math.floor((_rMs % 3600000) / 60000);
-      const _rS = Math.floor((_rMs % 60000) / 1000);
-      const _rH2 = _rH * 60 + _rM;
-      const _rCd = `in ${String(_rH2).padStart(2,'0')}:${String(_rS).padStart(2,'0')}`; 
+      const _rCd = _rH > 0 ? `in ${_rH}h ${String(_rM).padStart(2,'0')}m` : `in ${_rM}m`;
       _box.style.background = '#8B3FA8'; _box.style.borderRadius = '10px'; _box.style.padding = '8px 10px'; _box.style.textAlign = 'right';
       if (elLbl)  { elLbl.innerHTML = ''; elLbl.textContent = 'Next prayer'; elLbl.style.color = '#E1F5EE'; elLbl.style.fontSize = '11px'; elLbl.style.fontWeight = '600'; elLbl.classList.remove('flash-alert'); }
       if (elName) { elName.textContent = _restoreNext.name; elName.style.fontSize = '17px'; elName.style.fontWeight = '700'; elName.style.color = '#ffffff'; elName.style.whiteSpace = 'nowrap'; elName.classList.remove('flash-alert'); }
@@ -1825,11 +1872,10 @@ function renderPrayers(times, city) {
       isFastingDay: isFastingToday()
     });
   }
-  if (Notification.permission === 'granted') {
+  if (Notification.permission === 'granted' || localStorage.getItem('notif_granted') === 'true') {
     scheduleNotifications();
     scheduleEveReminders();
   }
-  // Re-render fast list now that _prayerTimes is set,
   // so afterMag check correctly removes today-fast decoration if past Maghrib
   renderUpcoming();
   // Reschedule precise Maghrib/Fajr triggers with fresh prayer times
@@ -1872,7 +1918,7 @@ function calcPrayerTimesLocal(lat, lon) {
   // Angle in degrees; negative = below horizon (Fajr, Sunrise, Maghrib, Isha)
   // Positive = above horizon (Asr)
   function hourAngle(angle, lat, dec) {
-    const num = -Math.sin(angle * Math.PI / 180) - Math.sin(lat * Math.PI / 180) * Math.sin(dec * Math.PI / 180);
+    const num = Math.sin(angle * Math.PI / 180) - Math.sin(lat * Math.PI / 180) * Math.sin(dec * Math.PI / 180);
     const den = Math.cos(lat * Math.PI / 180) * Math.cos(dec * Math.PI / 180);
     const val = num / den;
     if (val < -1 || val > 1) return null;
@@ -1886,10 +1932,9 @@ function calcPrayerTimesLocal(lat, lon) {
 
   const fajrHA    = hourAngle(-15, lat, dec);
   const sunriseHA = hourAngle(-0.833, lat, dec);
-  // FIX: Asr altitude is POSITIVE (sun is above horizon); was incorrectly negated before
   const asrHA = (function () {
-    const target = Math.atan(1 + Math.tan(Math.abs(lat - dec) * Math.PI / 180)) * 180 / Math.PI;
-    return hourAngle(target, lat, dec); // ← FIXED: positive angle
+    const asrAngle = Math.atan(1 / (1 + Math.tan(Math.abs((lat - dec) * Math.PI / 180)))) * 180 / Math.PI;
+    return hourAngle(asrAngle, lat, dec);
   })();
   const maghribHA = hourAngle(-0.833, lat, dec);
   const ishaHA    = hourAngle(-15, lat, dec);
@@ -1904,37 +1949,212 @@ function calcPrayerTimesLocal(lat, lon) {
   };
 }
 
+// ── Prayer method/school settings ────────────────────────────────────────
+const PRAYER_METHODS = [
+  [0,'Shia Ithna Ashari'],[1,'ISNA — N. America'],[2,'Muslim World League (MWL)'],
+  [3,'Egyptian — General Authority'],[4,'Umm al-Qura — Mecca'],
+  [5,'Karachi — Univ. of Islamic Sciences'],[7,'Tehran — Inst. of Geophysics'],
+  [8,'Gulf Region'],[9,'Kuwait'],[10,'Qatar'],[11,'Singapore'],
+  [12,'France — UOIF'],[13,'Turkey — Diyanet'],[14,'Russia — Spiritual Admin.'],
+  [15,'Moonsighting Committee Worldwide'],[16,'Dubai — UAE'],[17,'JAKIM — Malaysia'],
+  [18,'Tunisia'],[19,'Algeria'],[20,'KEMENAG — Indonesia'],[21,'Morocco'],
+  [22,'Comunidade Islamica de Lisboa'],[23,'Ministry of Awqaf — Jordan']
+];
+
+function buildApiUrl(dd, mm, yyyy, lat, lon) {
+  return `https://api.aladhan.com/v1/timings/${dd}-${mm}-${yyyy}?latitude=${lat}&longitude=${lon}&method=${_prayerMethod}&school=${_prayerSchool}`;
+}
+
+function updatePrayerMethodLabel() {
+  const el = document.getElementById('prayer-method-label');
+  if (!el) return;
+  const m = PRAYER_METHODS.find(x => x[0] === _prayerMethod);
+  const mName = m ? m[1].split('—')[0].split('(')[0].trim() : `Method ${_prayerMethod}`;
+  const school = _prayerSchool === 1 ? 'Hanafi' : 'Shafi';
+  el.textContent = `⚙ ${mName} · ${school}`;
+}
+
+function buildMethodList() {
+  const list = document.getElementById('prayer-method-list');
+  if (!list || list.children.length > 0) return;
+  PRAYER_METHODS.forEach(([val, name]) => {
+    const item = document.createElement('div');
+    item.textContent = name;
+    item.dataset.val = val;
+    item.style.cssText = `padding:7px 12px;font-size:12px;cursor:pointer;color:${val===_prayerMethod?'#1D9E75':'#333'};font-weight:${val===_prayerMethod?'700':'400'};background:${val===_prayerMethod?'#f0faf6':'#fff'}`;
+    item.onmouseenter = () => { if (parseInt(item.dataset.val) !== _prayerMethod) item.style.background = '#f7f7f7'; };
+    item.onmouseleave = () => { if (parseInt(item.dataset.val) !== _prayerMethod) item.style.background = '#fff'; };
+    item.onclick = () => selectPrayerMethod(parseInt(item.dataset.val));
+    list.appendChild(item);
+  });
+}
+
+function updateMethodListHighlight() {
+  const list = document.getElementById('prayer-method-list');
+  if (!list) return;
+  Array.from(list.children).forEach(item => {
+    const isActive = parseInt(item.dataset.val) === _prayerMethod;
+    item.style.color = isActive ? '#1D9E75' : '#333';
+    item.style.fontWeight = isActive ? '700' : '400';
+    item.style.background = isActive ? '#f0faf6' : '#fff';
+  });
+}
+
+function updateSchoolButtons() {
+  const shafi = document.getElementById('school-shafi-btn');
+  const hanafi = document.getElementById('school-hanafi-btn');
+  if (shafi) { shafi.style.background = _prayerSchool === 0 ? '#1D9E75' : '#fff'; shafi.style.color = _prayerSchool === 0 ? '#fff' : '#1D9E75'; }
+  if (hanafi) { hanafi.style.background = _prayerSchool === 1 ? '#1D9E75' : '#fff'; hanafi.style.color = _prayerSchool === 1 ? '#fff' : '#1D9E75'; }
+}
+
+function togglePrayerDropdown() {
+  const dd = document.getElementById('prayer-dropdown');
+  if (!dd) return;
+  const isOpen = dd.style.display !== 'none';
+  dd.style.display = isOpen ? 'none' : 'block';
+  if (!isOpen) { buildMethodList(); updateSchoolButtons(); updateMethodListHighlight(); }
+}
+
+function selectPrayerMethod(val) {
+  _prayerMethod = val;
+  localStorage.setItem('prayer_method', val);
+  updateMethodListHighlight();
+  updatePrayerMethodLabel();
+  applyPrayerSettings();
+}
+
+function selectPrayerSchool(val) {
+  _prayerSchool = val;
+  localStorage.setItem('prayer_school', val);
+  updateSchoolButtons();
+  updatePrayerMethodLabel();
+  applyPrayerSettings();
+}
+
+function applyPrayerSettings() {
+  document.getElementById('prayer-dropdown').style.display = 'none';
+  Object.keys(localStorage).forEach(k => { if (k.startsWith('prayer_') && !k.startsWith('prayer_method') && !k.startsWith('prayer_school')) localStorage.removeItem(k); });
+  if (window._cachedLat !== undefined) {
+    loadPrayers(window._cachedLat, window._cachedLon, window._cachedCity || 'Your location');
+  } else {
+    initPrayers();
+  }
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', e => {
+  const dd = document.getElementById('prayer-dropdown');
+  const lbl = document.getElementById('prayer-method-label');
+  if (dd && lbl && !dd.contains(e.target) && e.target !== lbl) dd.style.display = 'none';
+});
+
 function loadPrayers(lat, lon, city) {
-  const timings = calcPrayerTimesLocal(lat, lon);
-  renderPrayers(timings, city);
-  // Refine with API in background
   const today = new Date();
   const dd    = String(today.getDate()).padStart(2, '0');
   const mm    = String(today.getMonth() + 1).padStart(2, '0');
   const yyyy  = today.getFullYear();
-  fetch(`https://api.aladhan.com/v1/timings/${dd}-${mm}-${yyyy}?latitude=${lat}&longitude=${lon}&method=2`)
+  const todayStr = `${dd}-${mm}-${yyyy}`;
+  const cacheKeyFull = `prayer_${todayStr}_${Math.round(lat*10)}_${Math.round(lon*10)}`;
+
+  // Try cache first
+  try {
+    const cached = localStorage.getItem(cacheKeyFull);
+    if (cached) {
+      const { timings, hijri } = JSON.parse(cached);
+      renderPrayers(timings, city);
+      if (hijri) {
+        window._apiHijriDay = parseInt(hijri.day);
+        window._apiHijriMonth = parseInt(hijri.month.number);
+        window._apiHijriYear = parseInt(hijri.year);
+        window._apiHijriMonthName = hijri.month.en;
+        setHijriAnchor(window._apiHijriYear, window._apiHijriMonth, window._apiHijriDay);
+        _rebuildFasts();
+        const dlH = document.getElementById('prayer-date-hijri');
+        if (dlH) dlH.textContent = `${hijri.day} ${hijri.month.en} ${hijri.year}`;
+        calcScore();
+      }
+      // Still fetch in background to keep cache fresh
+      fetch(buildApiUrl(dd, mm, yyyy, lat, lon))
+        .then(r => r.json())
+        .then(data => {
+          if (data.code === 200) {
+            renderPrayers(data.data.timings, city);
+            const hijri = data.data.date.hijri;
+            if (hijri) {
+              window._apiHijriDay   = parseInt(hijri.day);
+              window._apiHijriMonth = parseInt(hijri.month.number);
+              window._apiHijriYear  = parseInt(hijri.year);
+              window._apiHijriMonthName = hijri.month.en;
+              setHijriAnchor(window._apiHijriYear, window._apiHijriMonth, window._apiHijriDay);
+              _rebuildFasts();
+              const dlH = document.getElementById('prayer-date-hijri');
+              const dlG = document.getElementById('prayer-date-greg');
+              if (dlH) dlH.textContent = `${hijri.day} ${hijri.month.en} ${hijri.year}`;
+              if (dlG) dlG.textContent = new Date().toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
+              calcScore();
+              try { localStorage.setItem(cacheKeyFull, JSON.stringify({ timings: data.data.timings, hijri })); } catch(e) {}
+            }
+          }
+        })
+        .catch(() => {});
+      return;
+    }
+  } catch(e) {}
+
+  // No cache — show local fallback immediately
+  const timings = calcPrayerTimesLocal(lat, lon);
+  renderPrayers(timings, city);
+
+  // Fetch from API
+  fetch(buildApiUrl(dd, mm, yyyy, lat, lon))
     .then(r => r.json())
     .then(data => {
       if (data.code === 200) {
         renderPrayers(data.data.timings, city);
-        // Use API Hijri date — correct for location and moon sighting
         const hijri = data.data.date.hijri;
         if (hijri) {
           window._apiHijriDay   = parseInt(hijri.day);
           window._apiHijriMonth = parseInt(hijri.month.number);
           window._apiHijriYear  = parseInt(hijri.year);
           window._apiHijriMonthName = hijri.month.en;
-          // Update the date display immediately
+          setHijriAnchor(window._apiHijriYear, window._apiHijriMonth, window._apiHijriDay);
+          _rebuildFasts();
           const dlH = document.getElementById('prayer-date-hijri');
           const dlG = document.getElementById('prayer-date-greg');
           if (dlH) dlH.textContent = `${hijri.day} ${hijri.month.en} ${hijri.year}`;
           if (dlG) dlG.textContent = new Date().toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
-          // Re-render fasting tracker now that API Hijri date is available
           calcScore();
+          try { localStorage.setItem(cacheKeyFull, JSON.stringify({ timings: data.data.timings, hijri })); } catch(e) {}
         }
       }
     })
-    .catch(() => {}); // local times already shown — silently ignore network failures
+    .catch(() => {
+      setTimeout(() => {
+        fetch(buildApiUrl(dd, mm, yyyy, lat, lon))
+          .then(r => r.json())
+          .then(data => {
+            if (data.code === 200) {
+              renderPrayers(data.data.timings, city);
+              const hijri = data.data.date.hijri;
+              if (hijri) {
+                window._apiHijriDay   = parseInt(hijri.day);
+                window._apiHijriMonth = parseInt(hijri.month.number);
+                window._apiHijriYear  = parseInt(hijri.year);
+                window._apiHijriMonthName = hijri.month.en;
+                setHijriAnchor(window._apiHijriYear, window._apiHijriMonth, window._apiHijriDay);
+                _rebuildFasts();
+                const dlH = document.getElementById('prayer-date-hijri');
+                const dlG = document.getElementById('prayer-date-greg');
+                if (dlH) dlH.textContent = `${hijri.day} ${hijri.month.en} ${hijri.year}`;
+                if (dlG) dlG.textContent = new Date().toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
+                calcScore();
+                try { localStorage.setItem(cacheKeyFull, JSON.stringify({ timings: data.data.timings, hijri })); } catch(e) {}
+              }
+            }
+          })
+          .catch(() => {});
+      }, 5000);
+    });
 }
 
 function initPrayers() {
@@ -2101,9 +2321,24 @@ setInterval(() => {
 }, 10000);
 
 // ── Initial renders ─────────────────────────────────────────────────────
+// Clear any cached prayer/hijri data from before the anchor fix was deployed,
+// so the live API is always used for the Hijri anchor on first load.
+(function clearStalePrayerCache() {
+  const today = new Date();
+  const dd = String(today.getDate()).padStart(2, '0');
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const yyyy = today.getFullYear();
+  const todayStr = `${dd}-${mm}-${yyyy}`;
+  Object.keys(localStorage).forEach(k => {
+    if (k.startsWith('prayer_') && !k.startsWith(`prayer_${todayStr}`)) {
+      localStorage.removeItem(k);
+    }
+  });
+})();
 renderUpcoming();
 calcScore();
 initPrayers();
+updatePrayerMethodLabel();
 
 // Schedule precise re-render at Maghrib and Fajr so decoration
 // appears/disappears exactly on time without polling
@@ -2284,9 +2519,10 @@ if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('service-worker.js')
       .then(reg => {
+        reg.update(); // force check for new service worker on every load
         console.log('SW registered:', reg.scope);
         updateNotifIcon();
-        if (Notification.permission === 'granted') {
+        if (Notification.permission === 'granted' || localStorage.getItem('notif_granted') === 'true') {
           registerPushSubscription();
           scheduleNotifications();
           scheduleEveReminders();
@@ -2301,21 +2537,28 @@ function updateNotifIcon() {
   const icon = document.getElementById('notif-icon');
   if (!icon) return;
   if (!('Notification' in window)) { icon.style.display = 'none'; return; }
-  if (Notification.permission === 'granted') {
+  // Use localStorage as source of truth — iOS PWA resets Notification.permission on reopen
+  const stored = localStorage.getItem('notif_granted');
+  const granted = Notification.permission === 'granted' || stored === 'true';
+  const denied  = Notification.permission === 'denied';
+  if (granted && !denied) {
     icon.className = 'ti ti-bell-ringing';
     icon.style.color = '#1D9E75';
     icon.title = 'Notifications enabled';
-  } else if (Notification.permission === 'denied') {
+  } else if (denied) {
     icon.className = 'ti ti-bell-off';
     icon.style.color = '#D85A30';
     icon.title = 'Notifications blocked — enable in browser settings';
+    localStorage.removeItem('notif_granted');
   } else {
     icon.className = 'ti ti-bell';
     icon.style.color = 'var(--color-text-tertiary)';
     icon.title = 'Tap to enable Suhoor & Iftar notifications';
   }
 }
-updateNotifIcon(); // single call — redundant call removed
+updateNotifIcon();
+setTimeout(updateNotifIcon, 500);
+setTimeout(updateNotifIcon, 1500);
 
 async function requestNotifPermission() {
   if (!('Notification' in window)) { alert('Notifications are not supported in this browser.'); return; }
@@ -2323,6 +2566,7 @@ async function requestNotifPermission() {
   const perm = await Notification.requestPermission();
   updateNotifIcon();
   if (perm === 'granted') {
+    localStorage.setItem('notif_granted', 'true');
     _notifScheduledDate = null;
     scheduleNotifications();
     scheduleEveReminders();
@@ -2334,9 +2578,9 @@ async function requestNotifPermission() {
   }
 }
 
-let _notifScheduledDate = null;
 function scheduleNotifications() {
-  if (!_prayerTimes || Notification.permission !== 'granted') return;
+  const notifOk = Notification.permission === 'granted' || localStorage.getItem('notif_granted') === 'true';
+  if (!_prayerTimes || !notifOk) return;
   const todayStr = getToday().toDateString();
   if (_notifScheduledDate === todayStr) return; // already scheduled for today
   _notifScheduledDate = todayStr;
@@ -2364,7 +2608,8 @@ function scheduleNotifications() {
 }
 
 function scheduleEveReminders() {
-  if (Notification.permission !== 'granted') return;
+  const notifOk = Notification.permission === 'granted' || localStorage.getItem('notif_granted') === 'true';
+  if (!notifOk) return;
   [1, 2].forEach(daysAhead => {
     const future    = new Date(getToday());
     future.setDate(future.getDate() + daysAhead);
