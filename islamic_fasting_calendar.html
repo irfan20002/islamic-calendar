@@ -264,10 +264,6 @@
   </div>
 
   <div class="dashboard-box">
-    <!-- Prayer card -->
-    <div class="dashboard-right" id="prayer-box">
-      <div style="font-size:10px;color:var(--color-text-tertiary)">Loading prayer times...</div>
-    </div>
     <!-- Score card — tree-growth tile design -->
     <div class="dashboard-left">
       <div class="dash-header">
@@ -326,6 +322,10 @@
           <div class="dash-tile-bar-wrap" id="sc-year-bar-wrap"></div>
         </div>
       </div>
+    </div>
+    <!-- Prayer card -->
+    <div class="dashboard-right" id="prayer-box">
+      <div style="font-size:10px;color:var(--color-text-tertiary)">Loading prayer times...</div>
     </div>
   </div>
 
@@ -1337,23 +1337,16 @@ function renderPrayers(times, city) {
 
   const box = document.getElementById('prayer-box');
   box.innerHTML = `
+    <div style="text-align:right;margin-bottom:2px;position:relative">
+      <div id="prayer-method-label" onclick="togglePrayerDropdown()" style="font-size:9px;color:var(--color-text-tertiary);cursor:pointer;white-space:nowrap;user-select:none;display:inline-block"></div>
+      <div id="prayer-dropdown" style="display:none;position:absolute;right:0;top:100%;margin-top:2px;background:#fff;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,0.18);z-index:999;min-width:220px;overflow:hidden;text-align:left">
+        <div style="padding:8px 10px 4px;font-size:10px;font-weight:700;color:#888;border-bottom:1px solid #f0f0f0">CALCULATION METHOD</div>
+        <div id="prayer-method-list" style="max-height:220px;overflow-y:auto"></div>
+      </div>
+    </div>
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;gap:8px">
       <div style="flex:1;min-width:0">
-        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:4px">
-          <div style="font-size:32px;font-weight:700;color:var(--color-text-primary);line-height:1.05;letter-spacing:-0.5px" id="current-time">--:-- --</div>
-          <div style="position:relative;text-align:right;flex-shrink:0">
-            <div id="prayer-method-label" onclick="togglePrayerDropdown()" style="font-size:9px;color:var(--color-text-tertiary);cursor:pointer;white-space:nowrap;user-select:none;padding-bottom:2px"></div>
-            <div id="prayer-dropdown" style="display:none;position:absolute;right:0;top:100%;margin-top:2px;background:#fff;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,0.18);z-index:999;min-width:220px;overflow:hidden;text-align:left">
-              <div style="padding:8px 10px 4px;font-size:10px;font-weight:700;color:#888;border-bottom:1px solid #f0f0f0">CALCULATION METHOD</div>
-              <div id="prayer-method-list" style="max-height:180px;overflow-y:auto"></div>
-              <div style="padding:6px 10px 4px;border-top:1px solid #f0f0f0;font-size:10px;font-weight:700;color:#888">ASR SCHOOL</div>
-              <div style="display:flex;padding:0 10px 10px;gap:0">
-                <button id="school-shafi-btn" onclick="selectPrayerSchool(0)" style="font-family:var(--font-sans);flex:1;padding:6px 4px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid #1D9E75;border-radius:6px 0 0 6px;background:#fff;color:#1D9E75">Shafi/Maliki/Hanbali</button>
-                <button id="school-hanafi-btn" onclick="selectPrayerSchool(1)" style="font-family:var(--font-sans);flex:1;padding:6px 4px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid #1D9E75;border-left:none;border-radius:0 6px 6px 0;background:#fff;color:#1D9E75">Hanafi</button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <div style="font-size:32px;font-weight:700;color:var(--color-text-primary);line-height:1.05;letter-spacing:-0.5px" id="current-time">--:-- --</div>
         <div style="margin-top:4px">
           <span id="prayer-date-greg" style="background:#1a7a4a;color:#ffffff;font-weight:600;padding:3px 12px;border-radius:20px;font-size:15px;white-space:nowrap;display:inline-block;border:1px solid #000">—</span>
         </div>
@@ -1953,15 +1946,14 @@ function calcPrayerTimesLocal(lat, lon) {
 let _prayerMethod = parseInt(localStorage.getItem('prayer_method') || '2');
 let _prayerSchool = parseInt(localStorage.getItem('prayer_school') || '0');
 
+// [method, school, display name, short label]
 const PRAYER_METHODS = [
-  [0,'Shia Ithna Ashari'],[1,'ISNA — N. America'],[2,'Muslim World League (MWL)'],
-  [3,'Egyptian — General Authority'],[4,'Umm al-Qura — Mecca'],
-  [5,'Karachi — Univ. of Islamic Sciences'],[7,'Tehran — Inst. of Geophysics'],
-  [8,'Gulf Region'],[9,'Kuwait'],[10,'Qatar'],[11,'Singapore'],
-  [12,'France — UOIF'],[13,'Turkey — Diyanet'],[14,'Russia — Spiritual Admin.'],
-  [15,'Moonsighting Committee Worldwide'],[16,'Dubai — UAE'],[17,'JAKIM — Malaysia'],
-  [18,'Tunisia'],[19,'Algeria'],[20,'KEMENAG — Indonesia'],[21,'Morocco'],
-  [22,'Comunidade Islamica de Lisboa'],[23,'Ministry of Awqaf — Jordan']
+  [2,  0, 'Muslim World League (MWL)',        'MWL · Shafi'],
+  [1,  0, 'ISNA — N. America',                'ISNA · Shafi'],
+  [5,  0, 'Karachi — Univ. of Islamic Sci.',  'Karachi · Shafi'],
+  [15, 0, 'Moonsighting Committee Worldwide', 'Moonsighting · Shafi'],
+  [8,  0, 'Gulf Region',                      'Gulf · Shafi'],
+  [2,  1, 'Hanafi (MWL · Late Asr ~6pm)',     'MWL · Hanafi'],
 ];
 
 function buildApiUrl(dd, mm, yyyy, lat, lon) {
@@ -1971,24 +1963,23 @@ function buildApiUrl(dd, mm, yyyy, lat, lon) {
 function updatePrayerMethodLabel() {
   const el = document.getElementById('prayer-method-label');
   if (!el) return;
-  const m = PRAYER_METHODS.find(x => x[0] === _prayerMethod);
-  const mName = m ? m[1].split('—')[0].split('(')[0].trim() : `Method ${_prayerMethod}`;
-  const school = _prayerSchool === 1 ? 'Hanafi' : 'Shafi';
-  el.textContent = `⚙ ${mName} · ${school}`;
+  const m = PRAYER_METHODS.find(x => x[0] === _prayerMethod && x[1] === _prayerSchool);
+  el.textContent = `⚙ ${m ? m[3] : `Method ${_prayerMethod}`}`;
 }
 
 function buildMethodList() {
   const list = document.getElementById('prayer-method-list');
   if (!list || list.children.length > 0) return;
-  PRAYER_METHODS.forEach(([val, name]) => {
+  PRAYER_METHODS.forEach(([method, school, name]) => {
     const item = document.createElement('div');
     item.textContent = name;
-    item.dataset.val = val;
-    const isActive = val === _prayerMethod;
-    item.style.cssText = `padding:7px 12px;font-size:12px;cursor:pointer;color:${isActive?'#1D9E75':'#333'};font-weight:${isActive?'700':'400'};background:${isActive?'#f0faf6':'#fff'}`;
-    item.onmouseenter = () => { if (parseInt(item.dataset.val) !== _prayerMethod) item.style.background = '#f7f7f7'; };
-    item.onmouseleave = () => { if (parseInt(item.dataset.val) !== _prayerMethod) item.style.background = '#fff'; };
-    item.onclick = () => selectPrayerMethod(parseInt(item.dataset.val));
+    item.dataset.method = method;
+    item.dataset.school = school;
+    const isActive = method === _prayerMethod && school === _prayerSchool;
+    item.style.cssText = `padding:9px 12px;font-size:12px;cursor:pointer;color:${isActive?'#1D9E75':'#333'};font-weight:${isActive?'700':'400'};background:${isActive?'#f0faf6':'#fff'};border-bottom:1px solid #f5f5f5`;
+    item.onmouseenter = () => { if (!(parseInt(item.dataset.method)===_prayerMethod && parseInt(item.dataset.school)===_prayerSchool)) item.style.background='#f7f7f7'; };
+    item.onmouseleave = () => { if (!(parseInt(item.dataset.method)===_prayerMethod && parseInt(item.dataset.school)===_prayerSchool)) item.style.background='#fff'; };
+    item.onclick = () => selectPrayerOption(parseInt(item.dataset.method), parseInt(item.dataset.school));
     list.appendChild(item);
   });
 }
@@ -1997,18 +1988,11 @@ function updateMethodListHighlight() {
   const list = document.getElementById('prayer-method-list');
   if (!list) return;
   Array.from(list.children).forEach(item => {
-    const isActive = parseInt(item.dataset.val) === _prayerMethod;
+    const isActive = parseInt(item.dataset.method) === _prayerMethod && parseInt(item.dataset.school) === _prayerSchool;
     item.style.color = isActive ? '#1D9E75' : '#333';
     item.style.fontWeight = isActive ? '700' : '400';
     item.style.background = isActive ? '#f0faf6' : '#fff';
   });
-}
-
-function updateSchoolButtons() {
-  const shafi = document.getElementById('school-shafi-btn');
-  const hanafi = document.getElementById('school-hanafi-btn');
-  if (shafi) { shafi.style.background = _prayerSchool === 0 ? '#1D9E75' : '#fff'; shafi.style.color = _prayerSchool === 0 ? '#fff' : '#1D9E75'; }
-  if (hanafi) { hanafi.style.background = _prayerSchool === 1 ? '#1D9E75' : '#fff'; hanafi.style.color = _prayerSchool === 1 ? '#fff' : '#1D9E75'; }
 }
 
 function togglePrayerDropdown() {
@@ -2016,21 +2000,15 @@ function togglePrayerDropdown() {
   if (!dd) return;
   const isOpen = dd.style.display !== 'none';
   dd.style.display = isOpen ? 'none' : 'block';
-  if (!isOpen) { buildMethodList(); updateSchoolButtons(); updateMethodListHighlight(); }
+  if (!isOpen) { buildMethodList(); updateMethodListHighlight(); }
 }
 
-function selectPrayerMethod(val) {
-  _prayerMethod = val;
-  localStorage.setItem('prayer_method', val);
+function selectPrayerOption(method, school) {
+  _prayerMethod = method;
+  _prayerSchool = school;
+  localStorage.setItem('prayer_method', method);
+  localStorage.setItem('prayer_school', school);
   updateMethodListHighlight();
-  updatePrayerMethodLabel();
-  applyPrayerSettings();
-}
-
-function selectPrayerSchool(val) {
-  _prayerSchool = val;
-  localStorage.setItem('prayer_school', val);
-  updateSchoolButtons();
   updatePrayerMethodLabel();
   applyPrayerSettings();
 }
