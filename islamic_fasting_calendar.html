@@ -442,8 +442,8 @@ function renderMoonPhaseSVG(date) {
   const svg = document.getElementById('moon-phase-svg');
   if (!svg) return;
   const R = 12, cx = 14, cy = 14;
-  const lit  = '#C8C8C8';
-  const dark = 'rgba(180,180,180,0.15)';
+  const lit  = '#ffffff';
+  const dark = 'rgba(255,255,255,0.1)';
 
   if (phase < 0.02 || phase > 0.98) {
     svg.innerHTML = `<circle cx="${cx}" cy="${cy}" r="${R}" fill="rgba(255,255,255,0.2)"/>`;
@@ -451,7 +451,7 @@ function renderMoonPhaseSVG(date) {
     return;
   }
   if (phase > 0.48 && phase < 0.52) {
-    svg.innerHTML = `<circle cx="${cx}" cy="${cy}" r="${R}" fill="#C8C8C8"/>`;
+    svg.innerHTML = `<circle cx="${cx}" cy="${cy}" r="${R}" fill="#ffffff"/>`;
     svg.setAttribute('aria-label', 'Full moon');
     return;
   }
