@@ -566,11 +566,13 @@ function gToHCorrected(date) {
 }
 
 function setHijriAnchor(apiYear, apiMonth, apiDay) {
-  // The API is telling us today's Hijri date — so the anchor Gregorian date is simply today.
-  // Do NOT use hToG() here — that's the algorithm which may be wrong by 1-2 days.
+  const newAbsDay = _hijriAbsDay(apiYear, apiMonth, apiDay);
+  // Skip rebuild if anchor is already set to the same values — avoids repeated heavy DOM work
+  if (window._anchorGreg && window._anchorHijriDayNum === newAbsDay) return;
+  // The API is telling us today's Hijri date — anchor Gregorian date is simply today.
   window._anchorGreg = new Date(getToday());
   window._anchorGreg.setHours(0, 0, 0, 0);
-  window._anchorHijriDayNum = _hijriAbsDay(apiYear, apiMonth, apiDay);
+  window._anchorHijriDayNum = newAbsDay;
 }
 
 function dateRange(start, days) {
