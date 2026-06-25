@@ -421,8 +421,6 @@ let _fajrWarnToggle = false;
 let _fajrWarnInterval = null;
 let _lastNextPrayerIdx = -1;
 let _notifScheduledDate = null;
-let _prayerMethod = parseInt(localStorage.getItem('prayer_method') || '2');
-let _prayerSchool = parseInt(localStorage.getItem('prayer_school') || '0');
 
 // Dynamic today — always returns midnight of the current day
 // Use getToday() instead of TODAY everywhere except initialisation
@@ -1341,7 +1339,21 @@ function renderPrayers(times, city) {
   box.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;gap:8px">
       <div style="flex:1;min-width:0">
-        <div style="font-size:32px;font-weight:700;color:var(--color-text-primary);line-height:1.05;letter-spacing:-0.5px" id="current-time">--:-- --</div>
+        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:4px">
+          <div style="font-size:32px;font-weight:700;color:var(--color-text-primary);line-height:1.05;letter-spacing:-0.5px" id="current-time">--:-- --</div>
+          <div style="position:relative;text-align:right;flex-shrink:0">
+            <div id="prayer-method-label" onclick="togglePrayerDropdown()" style="font-size:9px;color:var(--color-text-tertiary);cursor:pointer;white-space:nowrap;user-select:none;padding-bottom:2px"></div>
+            <div id="prayer-dropdown" style="display:none;position:absolute;right:0;top:100%;margin-top:2px;background:#fff;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,0.18);z-index:999;min-width:220px;overflow:hidden;text-align:left">
+              <div style="padding:8px 10px 4px;font-size:10px;font-weight:700;color:#888;border-bottom:1px solid #f0f0f0">CALCULATION METHOD</div>
+              <div id="prayer-method-list" style="max-height:180px;overflow-y:auto"></div>
+              <div style="padding:6px 10px 4px;border-top:1px solid #f0f0f0;font-size:10px;font-weight:700;color:#888">ASR SCHOOL</div>
+              <div style="display:flex;padding:0 10px 10px;gap:0">
+                <button id="school-shafi-btn" onclick="selectPrayerSchool(0)" style="font-family:var(--font-sans);flex:1;padding:6px 4px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid #1D9E75;border-radius:6px 0 0 6px;background:#fff;color:#1D9E75">Shafi/Maliki/Hanbali</button>
+                <button id="school-hanafi-btn" onclick="selectPrayerSchool(1)" style="font-family:var(--font-sans);flex:1;padding:6px 4px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid #1D9E75;border-left:none;border-radius:0 6px 6px 0;background:#fff;color:#1D9E75">Hanafi</button>
+              </div>
+            </div>
+          </div>
+        </div>
         <div style="margin-top:4px">
           <span id="prayer-date-greg" style="background:#1a7a4a;color:#ffffff;font-weight:600;padding:3px 12px;border-radius:20px;font-size:15px;white-space:nowrap;display:inline-block;border:1px solid #000">—</span>
         </div>
@@ -1354,18 +1366,6 @@ function renderPrayers(times, city) {
           <div style="font-size:13px;color:#E1F5EE;margin-bottom:1px" id="next-prayer-label">${boxLabel}</div>
           <div style="font-size:17px;font-weight:700;color:#ffffff;line-height:1.1;white-space:nowrap" id="next-prayer-name">${boxName}</div>
           <div style="font-size:14px;color:#E1F5EE;font-weight:600;margin-top:2px" id="next-prayer-countdown">${boxCd}</div>
-          <div style="position:relative;margin-top:4px;text-align:right">
-            <div id="prayer-method-label" onclick="togglePrayerDropdown()" style="font-size:9px;color:rgba(255,255,255,0.6);cursor:pointer;white-space:nowrap;user-select:none"></div>
-            <div id="prayer-dropdown" style="display:none;position:absolute;right:0;top:100%;margin-top:4px;background:#fff;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,0.18);z-index:999;min-width:220px;overflow:hidden;text-align:left">
-              <div style="padding:8px 10px 4px;font-size:10px;font-weight:700;color:#888;border-bottom:1px solid #f0f0f0">CALCULATION METHOD</div>
-              <div id="prayer-method-list" style="max-height:180px;overflow-y:auto"></div>
-              <div style="padding:4px 10px 6px;border-top:1px solid #f0f0f0;font-size:10px;font-weight:700;color:#888;margin-top:2px">ASR SCHOOL</div>
-              <div style="display:flex;gap:0;padding:0 10px 10px">
-                <button id="school-shafi-btn" onclick="selectPrayerSchool(0)" style="font-family:var(--font-sans);flex:1;padding:6px 4px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid #1D9E75;border-radius:6px 0 0 6px;background:#fff;color:#1D9E75;transition:all .15s">Shafi/Maliki/Hanbali</button>
-                <button id="school-hanafi-btn" onclick="selectPrayerSchool(1)" style="font-family:var(--font-sans);flex:1;padding:6px 4px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid #1D9E75;border-left:none;border-radius:0 6px 6px 0;background:#fff;color:#1D9E75;transition:all .15s">Hanafi</button>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>
@@ -1878,8 +1878,8 @@ function renderPrayers(times, city) {
   }
   // so afterMag check correctly removes today-fast decoration if past Maghrib
   renderUpcoming();
-  // Reschedule precise Maghrib/Fajr triggers with fresh prayer times
   scheduleUpcomingRerender();
+  updatePrayerMethodLabel();
 }
 
 // ── Local prayer time calculation ───────────────────────────────────────
@@ -1950,6 +1950,9 @@ function calcPrayerTimesLocal(lat, lon) {
 }
 
 // ── Prayer method/school settings ────────────────────────────────────────
+let _prayerMethod = parseInt(localStorage.getItem('prayer_method') || '2');
+let _prayerSchool = parseInt(localStorage.getItem('prayer_school') || '0');
+
 const PRAYER_METHODS = [
   [0,'Shia Ithna Ashari'],[1,'ISNA — N. America'],[2,'Muslim World League (MWL)'],
   [3,'Egyptian — General Authority'],[4,'Umm al-Qura — Mecca'],
@@ -1981,7 +1984,8 @@ function buildMethodList() {
     const item = document.createElement('div');
     item.textContent = name;
     item.dataset.val = val;
-    item.style.cssText = `padding:7px 12px;font-size:12px;cursor:pointer;color:${val===_prayerMethod?'#1D9E75':'#333'};font-weight:${val===_prayerMethod?'700':'400'};background:${val===_prayerMethod?'#f0faf6':'#fff'}`;
+    const isActive = val === _prayerMethod;
+    item.style.cssText = `padding:7px 12px;font-size:12px;cursor:pointer;color:${isActive?'#1D9E75':'#333'};font-weight:${isActive?'700':'400'};background:${isActive?'#f0faf6':'#fff'}`;
     item.onmouseenter = () => { if (parseInt(item.dataset.val) !== _prayerMethod) item.style.background = '#f7f7f7'; };
     item.onmouseleave = () => { if (parseInt(item.dataset.val) !== _prayerMethod) item.style.background = '#fff'; };
     item.onclick = () => selectPrayerMethod(parseInt(item.dataset.val));
@@ -2032,8 +2036,11 @@ function selectPrayerSchool(val) {
 }
 
 function applyPrayerSettings() {
-  document.getElementById('prayer-dropdown').style.display = 'none';
-  Object.keys(localStorage).forEach(k => { if (k.startsWith('prayer_') && !k.startsWith('prayer_method') && !k.startsWith('prayer_school')) localStorage.removeItem(k); });
+  const dd = document.getElementById('prayer-dropdown');
+  if (dd) dd.style.display = 'none';
+  Object.keys(localStorage).forEach(k => {
+    if (k.startsWith('prayer_') && k !== 'prayer_method' && k !== 'prayer_school') localStorage.removeItem(k);
+  });
   if (window._cachedLat !== undefined) {
     loadPrayers(window._cachedLat, window._cachedLon, window._cachedCity || 'Your location');
   } else {
@@ -2041,7 +2048,6 @@ function applyPrayerSettings() {
   }
 }
 
-// Close dropdown when clicking outside
 document.addEventListener('click', e => {
   const dd = document.getElementById('prayer-dropdown');
   const lbl = document.getElementById('prayer-method-label');
@@ -2338,7 +2344,6 @@ setInterval(() => {
 renderUpcoming();
 calcScore();
 initPrayers();
-updatePrayerMethodLabel();
 
 // Schedule precise re-render at Maghrib and Fajr so decoration
 // appears/disappears exactly on time without polling
