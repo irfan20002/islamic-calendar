@@ -1,4 +1,4 @@
-const CACHE_NAME = 'islamic-calendar-v2';
+const CACHE_NAME = 'islamic-calendar-v7';
 const ASSETS = ['islamic_fasting_calendar.html', 'manifest.json'];
 
 // ── Install & cache ──────────────────────────────────────────────────────
@@ -78,71 +78,33 @@ function scheduleAt(ms, title, body, tag) {
 self.addEventListener('message', e => {
   if (!e.data || e.data.type !== 'SCHEDULE_NOTIFICATIONS') return;
 
-  const { fajr, sunrise, maghrib, isFastingDay } = e.data;
+  const { fajr, sunrise, maghrib, isha, isFastingDay } = e.data;
   if (!fajr || !maghrib) return;
 
   const now        = Date.now();
   const fajrMs     = new Date(fajr).getTime();
   const sunriseMs  = new Date(sunrise).getTime();
   const maghribMs  = new Date(maghrib).getTime();
+  const ishaMs     = isha ? new Date(isha).getTime() : null;
 
   // Cancel any previously scheduled timers before rescheduling
   clearAllTimers();
 
   if (isFastingDay) {
-    // 30 min before Fajr — Suhoor reminder
-    scheduleAt(
-      fajrMs - 30 * 60000 - now,
-      '🍽️ Suhoor time',
-      `Fajr is at ${formatTime(fajrMs)}. Eat and make your intention.`,
-      'suhoor-30'
-    );
-
-    // 2 min before Fajr — urgent Suhoor warning
-    scheduleAt(
-      fajrMs - 2 * 60000 - now,
-      '⏰ Suhoor ending in 2 minutes',
-      `Fajr at ${formatTime(fajrMs)}. Stop eating now.`,
-      'suhoor-2'
-    );
-
-    // At Fajr
-    scheduleAt(
-      fajrMs - now,
-      '🌄 Fajr time',
-      `It is Fajr. Your fast has begun. May Allah accept it.`,
-      'fajr'
-    );
-
-    // At Maghrib — Iftar
-    scheduleAt(
-      maghribMs - now,
-      '🌙 Iftar time!',
-      `Maghrib at ${formatTime(maghribMs)}. Break your fast. Allahu Akbar!`,
-      'iftar'
-    );
-
+    scheduleAt(fajrMs - 30 * 60000 - now, '🍽️ Suhoor time',             `Fajr is at ${formatTime(fajrMs)}. Eat and make your intention.`,    'suhoor-30');
+    scheduleAt(fajrMs - 2  * 60000 - now, '⏰ Suhoor ending in 2 minutes', `Fajr at ${formatTime(fajrMs)}. Stop eating now.`,                   'suhoor-2');
+    scheduleAt(fajrMs - now,               '🌄 Fajr time',                 `It is Fajr. Your fast has begun. May Allah accept it.`,             'fajr');
+    scheduleAt(maghribMs - now,            '🌙 Iftar time!',               `Maghrib at ${formatTime(maghribMs)}. Break your fast. Allahu Akbar!`, 'iftar');
   } else {
-    // Non-fasting day — just Maghrib reminder
-    scheduleAt(
-      maghribMs - now,
-      '🕌 Maghrib prayer time',
-      `Maghrib is at ${formatTime(maghribMs)}.`,
-      'maghrib'
-    );
+    scheduleAt(maghribMs - now, '🕌 Maghrib prayer time', `Maghrib is at ${formatTime(maghribMs)}.`, 'maghrib');
   }
 
   // Ishraq — 25 min after sunrise, every day
-  if (sunrise) {
-    scheduleAt(
-      sunriseMs + 25 * 60000 - now,
-      '🌅 Time to pray Ishraq',
-      '25 minutes have passed since sunrise. Pray 2 rakats of Ishraq.',
-      'ishraq'
-    );
-  }
+  if (sunrise) scheduleAt(sunriseMs + 25 * 60000 - now, '🌅 Time to pray Ishraq', '25 minutes have passed since sunrise. Pray 2 rakats of Ishraq.', 'ishraq');
 
-  // Confirm scheduling back to the page
+  // Isha — every day
+  if (ishaMs) scheduleAt(ishaMs - now, '🌙 Isha prayer time', `Isha is at ${formatTime(ishaMs)}.`, 'isha');
+
   e.source && e.source.postMessage({ type: 'SCHEDULED_OK', timers: _timers.length });
 });
 
