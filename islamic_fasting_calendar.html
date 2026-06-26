@@ -109,21 +109,6 @@
   .fast-card.today-fast .fast-icon,
   .fast-card.today-fast .fast-info,
   .fast-card.today-fast .countdown { position: relative; z-index: 1; }
-  .today-reminder-row {
-    display:none !important;
-    position: absolute; top: 0; left: 44%; right: 85px; bottom: 0;
-    display: flex; align-items: center; justify-content: center;
-    text-align: center;
-    font-size: 13px; color: #0e9e8a;
-    font-style: italic; font-weight: 700;
-    pointer-events: none; z-index: 2;
-    text-shadow: 0 0 10px rgba(255,255,255,0.95), 0 0 4px rgba(255,255,255,1);
-    animation: reminderFade 4s ease-in-out infinite;
-  }
-  @keyframes reminderFade {
-    0%,100% { opacity: 0; }
-    15%,80%  { opacity: 1; }
-  }
   .fast-card.done { opacity: 0.5; }
   .fast-card.done .fast-name { text-decoration: line-through; }
   .fast-check { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #1D9E75; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: all 0.2s; }
@@ -417,17 +402,15 @@ let _prayerTimes = null;
 let _parsedPrayerTimes = null;
 let _countdownInterval = null;
 let _flashInterval = null;
-let _fajrWarnToggle = false;
-let _fajrWarnInterval = null;
 let _lastNextPrayerIdx = -1;
 let _notifScheduledDate = null;
+let _prayerMethod = parseInt(localStorage.getItem('prayer_method') || '2');
+let _prayerSchool = parseInt(localStorage.getItem('prayer_school') || '0');
 
 // Dynamic today — always returns midnight of the current day
 // Use getToday() instead of TODAY everywhere except initialisation
 let _today = (function() { const d = new Date(); d.setHours(0,0,0,0); return d; })();
 function getToday() { return _today; }
-// Alias for legacy references that still use TODAY
-let TODAY = _today;
 
 // ── Moon phase SVG ──────────────────────────────────────────────────────
 function getMoonPhase(date) {
@@ -984,17 +967,20 @@ ${isTodayFast ? `<div class="today-reminder-inline" id="fast-reminder-inline">�
       </div>
       ${countText ? `<span class="countdown ${cdClass}" style="flex-shrink:0;align-self:center;">${countText}</span>` : ''}
 `;
-    if (isTodayFast) { const rr = document.createElement('div'); rr.className='today-reminder-row'; rr.id='fast-reminder-text'; rr.textContent=REMINDERS[0]; card.appendChild(rr); }
     list.appendChild(card);
     if (isTodayFast) {
       let _ri = 0;
       const _el = card.querySelector('#fast-reminder-inline');
-      if (_el) setInterval(() => {
-        _ri = (_ri + 1) % REMINDERS.length;
-        _el.style.animation = 'none'; void _el.offsetWidth;
-        _el.style.animation = 'reminderFade 4s ease-in-out infinite';
-        _el.textContent = REMINDERS[_ri];
-      }, 4000);
+      if (_el) {
+        const _reminderInterval = setInterval(() => {
+          _ri = (_ri + 1) % REMINDERS.length;
+          _el.style.animation = 'none'; void _el.offsetWidth;
+          _el.style.animation = 'reminderFade 4s ease-in-out infinite';
+          _el.textContent = REMINDERS[_ri];
+        }, 4000);
+        // Stop reminder cycling after 5 minutes
+        setTimeout(() => clearInterval(_reminderInterval), 300000);
+      }
       const cv = card.querySelector('.sparkle-canvas');
       if (cv) {
         const ctx = cv.getContext('2d');
@@ -1004,7 +990,6 @@ ${isTodayFast ? `<div class="today-reminder-inline" id="fast-reminder-inline">�
         let pts = [], frame = 0;
         const W = cv.width, H = cv.height;
         const spawn = () => {
-          // spawn multiple particles per call for denser trail
           for (let i = 0; i < 3; i++) {
             pts.push({
               x: 0,
@@ -1045,6 +1030,8 @@ ${isTodayFast ? `<div class="today-reminder-inline" id="fast-reminder-inline">�
           else ctx.clearRect(0, 0, W, H);
         };
         draw();
+        // Stop sparkle canvas after 30 seconds to save battery
+        setTimeout(() => { cv._active = false; }, 30000);
       }
     }
   });
@@ -1390,8 +1377,8 @@ function renderPrayers(times, city) {
     </div>
     `;
 
-  // Sync clock and date line immediately
   updateClock();
+  updateDateDisplay();
   updateHijriHeader();
 
   // FIX: flash logic — after Maghrib, compare now vs TOMORROW's Fajr
@@ -1455,7 +1442,7 @@ function renderPrayers(times, city) {
       const msToSunrise = sunriseTimeW - now3;
       const fm = Math.floor(msToSunrise / 60000);
       const fs = Math.floor((msToSunrise % 60000) / 1000);
-      const fCountdown = String(fm).padStart(2,'0') + ':' + String(fs).padStart(2,'0');
+      const fCountdown = `${fm}m ${fs}s`;
       if (_box) { _box.style.background = '#1D9E75'; _box.style.borderRadius = '10px'; _box.style.padding = '8px 10px'; _box.style.textAlign = 'right'; }
       if (elLbl)  { elLbl.textContent = 'Fajr ends in'; elLbl.style.color = '#E1F5EE'; elLbl.style.fontSize = '15px'; elLbl.style.fontWeight = '600'; elLbl.classList.add('flash-alert'); }
       if (elName) { elName.textContent = fCountdown; elName.style.fontSize = '22px'; elName.style.fontWeight = '700'; elName.style.color = '#ffffff'; elName.style.whiteSpace = 'nowrap'; elName.classList.remove('flash-alert'); }
@@ -1469,7 +1456,7 @@ function renderPrayers(times, city) {
       const msToIshraq = ishraqStart - now3;
       const im = Math.floor(msToIshraq / 60000);
       const is = Math.floor((msToIshraq % 60000) / 1000);
-      const countdown = String(im).padStart(2,'0') + ':' + String(is).padStart(2,'0');
+      const countdown = `${im}m ${is}s`;
       if (_box) { _box.style.background = 'linear-gradient(135deg,#c8860a,#f5c200)'; _box.style.borderRadius = '10px'; _box.style.padding = '8px 10px'; _box.style.textAlign = 'center'; }
       if (elLbl)  { elLbl.innerHTML = '<svg width="48" height="29" viewBox="0 0 80 48" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:0 auto 2px"><g stroke="#3d1f00" stroke-width="2.5" stroke-linecap="round" opacity="0.7"><line x1="40" y1="6" x2="40" y2="0"/><line x1="56" y1="10" x2="60" y2="5"/><line x1="66" y1="22" x2="72" y2="20"/><line x1="24" y1="10" x2="20" y2="5"/><line x1="14" y1="22" x2="8" y2="20"/><line x1="63" y1="33" x2="70" y2="34"/><line x1="17" y1="33" x2="10" y2="34"/></g><path d="M16,38 A24,24 0 0,1 64,38 Z" fill="rgba(61,31,0,0.7)"/><path d="M4,40 Q40,34 76,40" fill="none" stroke="rgba(61,31,0,0.7)" stroke-width="2.5" stroke-linecap="round"/></svg>'; elLbl.style.color = '#3d1f00'; elLbl.classList.remove('flash-alert'); }
       if (elName) { elName.textContent = 'NO PRAYER'; elName.style.color = '#cc0000'; elName.style.fontSize = '13px'; elName.style.fontWeight = '700'; elName.style.color = '#3d1f00'; elName.style.whiteSpace = 'normal'; elName.classList.add('flash-alert'); }
@@ -1559,7 +1546,7 @@ function renderPrayers(times, city) {
       const ms2 = prayerTime - now3;
       const wm = Math.floor(ms2 / 60000);
       const ws = Math.floor((ms2 % 60000) / 1000);
-      const wCountdown = String(wm).padStart(2,'0') + ':' + String(ws).padStart(2,'0');
+      const wCountdown = `${wm}m ${ws}s`;
       if (_box) { _box.style.background = '#8B3FA8'; _box.style.borderRadius = '10px'; _box.style.padding = '8px 10px'; _box.style.textAlign = 'right'; }
       if (elLbl)  { elLbl.innerHTML = ''; elLbl.textContent = 'Next prayer'; elLbl.style.display = ''; elLbl.style.color = '#E1F5EE'; elLbl.style.fontSize = '11px'; elLbl.style.fontWeight = '600'; elLbl.classList.remove('flash-alert'); }
       if (elName) { elName.textContent = label; elName.style.fontSize = '17px'; elName.style.fontWeight = '700'; elName.style.color = '#ffffff'; elName.style.whiteSpace = 'nowrap'; elName.classList.remove('flash-alert'); }
@@ -1701,8 +1688,7 @@ function renderPrayers(times, city) {
 
       if (_inFajrWarn) {
         // Clear any old interval — use seconds-based alternation
-        if (_fajrWarnInterval) { clearInterval(_fajrWarnInterval); _fajrWarnInterval = null; }
-        _fajrWarnToggle = now3.getSeconds() % 4 < 2;
+        const _fajrWarnToggle = now3.getSeconds() % 4 < 2;
         const _fms = _fajr - now3;
         const _fm  = Math.floor(_fms / 60000);
         const _fs  = Math.floor((_fms % 60000) / 1000);
@@ -1721,8 +1707,7 @@ function renderPrayers(times, city) {
           if (elCd)  { elCd.textContent = ''; elCd.classList.remove('flash-alert'); }
         }
       } else {
-        // Not in Fajr warn — clear toggle interval
-        if (_fajrWarnInterval) { clearInterval(_fajrWarnInterval); _fajrWarnInterval = null; _fajrWarnToggle = false; }
+        // Not in Fajr warn
         if (_inTahajjud) {
           // Purple — Pray Tahajjud
           if (_box)  { _box.style.background = '#8B3FA8'; _box.style.borderRadius = '10px'; _box.style.padding = '8px 10px'; _box.style.textAlign = 'right'; }
@@ -1854,7 +1839,7 @@ function renderPrayers(times, city) {
   // Start Suhoor/Iftar countdown banner
   updateCountdownBanner();
   if (_countdownInterval) clearInterval(_countdownInterval);
-  _countdownInterval = setInterval(updateCountdownBanner, 1000);
+  _countdownInterval = setInterval(updateCountdownBanner, 60000);
 
   // Post to service worker for background notifications
   if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
@@ -1874,7 +1859,6 @@ function renderPrayers(times, city) {
   // so afterMag check correctly removes today-fast decoration if past Maghrib
   renderUpcoming();
   scheduleUpcomingRerender();
-  updatePrayerMethodLabel();
 }
 
 // ── Local prayer time calculation ───────────────────────────────────────
@@ -1945,9 +1929,6 @@ function calcPrayerTimesLocal(lat, lon) {
 }
 
 // ── Prayer method/school settings ────────────────────────────────────────
-let _prayerMethod = parseInt(localStorage.getItem('prayer_method') || '2');
-let _prayerSchool = parseInt(localStorage.getItem('prayer_school') || '0');
-
 // [method, school, display name, short label]
 const PRAYER_METHODS = [
   [2,  0, 'Muslim World League (MWL)',        'MWL · Shafi'],
@@ -2177,7 +2158,7 @@ function toggleFast(el, key) {
   renderUpcoming(); // re-apply .next highlight to the correct upcoming fast
 }
 
-// ── Clock + next-prayer countdown (updates every second) ────────────────
+// ── Clock (updates every second, minimal DOM work) ───────────────────────
 function updateClock() {
   const el = document.getElementById('current-time');
   if (!el) return;
@@ -2187,78 +2168,42 @@ function updateClock() {
   const ampm = h >= 12 ? 'PM' : 'AM';
   h          = h % 12 || 12;
   el.innerHTML = `${h}:${m}<span style="font-size:0.45em;vertical-align:super;margin-left:3px;font-weight:500">${ampm}</span>`;
+}
 
-  // Date lines: Hijri + Gregorian split
+// ── Date/Hijri/holy month update (runs once per minute) ──────────────────
+function updateDateDisplay() {
+  const now = new Date();
   const dlH = document.getElementById('prayer-date-hijri');
   const dlG = document.getElementById('prayer-date-greg');
-  if (dlH || dlG) {
-    const hd = getAdjustedHijri(now);
-    if (dlH) dlH.textContent = `${hd.day} ${HIJRI_MONTHS[hd.month - 1]} ${hd.year}`;
-    if (dlG) dlG.textContent = now.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
+  if (!dlH && !dlG) return;
 
-    const HOLY = {
-      1:  ['Muharram', 'Sacred month & Islamic New Year.', 'Fast 9th (Tasua) + 10th (Ashura), 11th optional. Increase dhikr & tawbah.'],
-      7:  ['Rajab', 'Sacred month; Isra wal Miraj (27th).', 'Avoid sin, fast voluntarily, seek forgiveness.'],
-      8:  ['Shaban', 'Beloved month of the Prophet ﷺ.', 'Increase fasting & Quran; fast the 15th.'],
-      9:  ['Ramadan', 'Holiest month — Quran was revealed.', 'Fast daily, pray Tarawih, seek Laylat al-Qadr.'],
-      11: ['Dhul Qidah', 'Sacred month of Hajj preparation.', 'Avoid sin, increase worship & dhikr.'],
-      12: ['Dhul Hijjah', 'Best 10 days of the year.', 'Fast 1st–9th, Arafah (9th) most emphasized. Make Takbir, give Udhiyah.']
-    };
-    const banner = document.getElementById('holy-month-banner');
-    const holy = HOLY[hd.month];
-    if (holy && banner) {
-      banner.style.display = 'block';
-      banner.innerHTML = `<b>🌙 ${holy[0]}:</b> ${holy[1]} <span style="color:#1a7a4a;font-weight:600">Do:</span> ${holy[2]}`;
-      if (dlH) { dlH.className = 'hijri-gold'; }
-    } else {
-      if (banner) banner.style.display = 'none';
-      if (dlH) { dlH.className = 'hijri-green'; }
-    }
-  }
+  const hd = getAdjustedHijri(now);
+  if (dlH) dlH.textContent = `${hd.day} ${HIJRI_MONTHS[hd.month - 1]} ${hd.year}`;
+  if (dlG) dlG.textContent = now.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
 
-  // Update next-prayer countdown text in real time
-  if (_prayerTimes && _parsedPrayerTimes) {
-    const cdEl = document.getElementById('next-prayer-countdown');
-    if (cdEl) {
-      // Skip during all special windows — flash interval handles those
-      const _fT = window._fajrTime, _iE = window._ishraqEnd;
-      const _dH = window._dhuhrTime, _aW = window._asrWarnStart, _aT = window._asrTime;
-      const _mW = window._maghribWarnStart, _mT = window._maghribTime;
-      const _iW = window._ishaWarnStart, _iT = window._ishaTime;
-      const _dWS = window._dhuhrWarnStart;
-      const _skipCd = ((_fT && _iE && now >= _fT && now < _iE) ||
-          (_dWS && _dH && now >= _dWS && now < _dH) ||
-          (_dH && _aW && now >= _dH && now < _aW) ||
-          (_aW && _aT && now >= _aW && now < _aT) ||
-          (_aT && _mW && now >= _aT && now < _mW) ||
-          (_mW && _mT && now >= _mW && now < _mT) ||
-          (_mT && _iW && now >= _mT && now < _iW) ||
-          (_iW && _iT && now >= _iW && now < _iT) ||
-          (_iT && now >= _iT) ||
-          (now.getHours() < 12 && window._fajrTime && now < window._fajrTime));
-      if (!_skipCd) {
-        let ni = _parsedPrayerTimes.findIndex((p, i) => p > now && PRAYER_KEYS[i] !== 'Sunrise');
-        let targetTime;
-        if (ni === -1) {
-          targetTime = parseTomorrow(_prayerTimes[PRAYER_KEYS[0]]);
-        } else {
-          targetTime = _parsedPrayerTimes[ni];
-        }
-        const ms = targetTime - now;
-        const dh = Math.floor(ms / 3600000);
-        const dm = Math.floor((ms % 3600000) / 60000);
-        const ds = Math.floor((ms % 60000) / 1000);
-        if (ms <= 15 * 60000) {
-          cdEl.textContent = dh > 0 ? `in ${dh}h ${dm}m` : `in ${dm}m ${ds}s`;
-        } else {
-          cdEl.textContent = '';
-        }
-      }
-    }
+  const HOLY = {
+    1:  ['Muharram', 'Sacred month & Islamic New Year.', 'Fast 9th (Tasua) + 10th (Ashura), 11th optional. Increase dhikr & tawbah.'],
+    7:  ['Rajab', 'Sacred month; Isra wal Miraj (27th).', 'Avoid sin, fast voluntarily, seek forgiveness.'],
+    8:  ['Shaban', 'Beloved month of the Prophet ﷺ.', 'Increase fasting & Quran; fast the 15th.'],
+    9:  ['Ramadan', 'Holiest month — Quran was revealed.', 'Fast daily, pray Tarawih, seek Laylat al-Qadr.'],
+    11: ['Dhul Qidah', 'Sacred month of Hajj preparation.', 'Avoid sin, increase worship & dhikr.'],
+    12: ['Dhul Hijjah', 'Best 10 days of the year.', 'Fast 1st–9th, Arafah (9th) most emphasized. Make Takbir, give Udhiyah.']
+  };
+  const banner = document.getElementById('holy-month-banner');
+  const holy = HOLY[hd.month];
+  if (holy && banner) {
+    banner.style.display = 'block';
+    banner.innerHTML = `<b>🌙 ${holy[0]}:</b> ${holy[1]} <span style="color:#1a7a4a;font-weight:600">Do:</span> ${holy[2]}`;
+    if (dlH) { dlH.className = 'hijri-gold'; }
+  } else {
+    if (banner) banner.style.display = 'none';
+    if (dlH) { dlH.className = 'hijri-green'; }
   }
 }
 updateClock();
+updateDateDisplay();
 setInterval(updateClock, 1000);
+setInterval(updateDateDisplay, 60000);
 
 // ── Midnight rollover — refresh TODAY and all views ──────────────────────
 (function scheduleMidnightRefresh() {
@@ -2266,7 +2211,6 @@ setInterval(updateClock, 1000);
   const msToMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1) - now;
   setTimeout(() => {
     _today = new Date(); _today.setHours(0,0,0,0);
-    TODAY  = _today;
     _fastDateCache = null; // invalidate allFastDates cache
     _parsedPrayerTimes = null;
     _notifScheduledDate = null; // reset so notifications reschedule for new day
@@ -2304,7 +2248,7 @@ setInterval(() => {
       initPrayers();
     }
   }
-}, 10000);
+}, 30000);
 
 // ── Initial renders ─────────────────────────────────────────────────────
 // Clear any cached prayer/hijri data from before the anchor fix was deployed,
@@ -2324,6 +2268,7 @@ setInterval(() => {
 renderUpcoming();
 calcScore();
 initPrayers();
+updatePrayerMethodLabel();
 
 // Schedule precise re-render at Maghrib and Fajr so decoration
 // appears/disappears exactly on time without polling
@@ -2389,7 +2334,6 @@ function updateCountdownBanner() {
 
   const hh = String(Math.floor(ms / 3600000)).padStart(2, '0');
   const mm = String(Math.floor((ms % 3600000) / 60000)).padStart(2, '0');
-  const ss = String(Math.floor((ms % 60000)   / 1000)).padStart(2, '0');
 
   // Iftar: label blinks 10 min before; Suhoor: label blinks 30 min before
   const isIftar     = label === 'Iftar begins';
@@ -2398,7 +2342,7 @@ function updateCountdownBanner() {
   const timeColor   = (isIftar ? ms <= 10 * 60000 : ms <= 30 * 60000) ? '#8b0000' : '#0f5c2e';
 
   _setCountdownRight(null);
-  wrap.innerHTML = `<div style="text-align:center;white-space:nowrap;${flashStyle}"><span style="font-size:13px;font-weight:700;color:#0a3d1f;text-transform:uppercase;letter-spacing:.05em;">${icon} ${label} in </span><span style="font-size:16px;font-weight:800;color:${timeColor};font-variant-numeric:tabular-nums;">${hh}:${mm}:${ss}</span></div>`;
+  wrap.innerHTML = `<div style="text-align:center;white-space:nowrap;${flashStyle}"><span style="font-size:13px;font-weight:700;color:#0a3d1f;text-transform:uppercase;letter-spacing:.05em;">${icon} ${label} in </span><span style="font-size:16px;font-weight:800;color:${timeColor};font-variant-numeric:tabular-nums;">${hh}h ${mm}m</span></div>`;
 }
 
 // Centered countdown — same mechanism for both Iftar and Suhoor
@@ -2615,7 +2559,7 @@ function scheduleEveReminders() {
   });
 }
 
-// ── Shooting stars ───────────────────────────────────────────────────────
+// ── Shooting stars — run for 60s then stop ───────────────────────────────
 (function () {
   const box = document.querySelector('.dashboard-box');
   if (!box) return;
@@ -2631,10 +2575,11 @@ function scheduleEveReminders() {
     box.appendChild(star);
     setTimeout(() => star.remove(), duration * 1000 + 100);
   }
-  setInterval(shootStar, 1000);
+  const _ssInterval = setInterval(shootStar, 1000);
+  setTimeout(() => clearInterval(_ssInterval), 60000);
 })();
 
-// ── Glitter sparkles ─────────────────────────────────────────────────────
+// ── Glitter sparkles — run for 60s then stop ─────────────────────────────
 (function () {
   const wrap = document.getElementById('glitter-wrap');
   if (!wrap) return;
