@@ -176,7 +176,7 @@
   }
   .tree-sway { display: inline-block; animation: sway 3s ease-in-out infinite; transform-origin: bottom center; }
   /* ── Dashboard / score+prayer widget ── */
-  .dashboard-box { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: .4rem; position: relative; overflow: hidden; border-radius: var(--border-radius-lg); }
+  .dashboard-box { display: grid; grid-template-columns: 1fr; gap: 6px; margin-bottom: .4rem; position: relative; overflow: hidden; border-radius: var(--border-radius-lg); }
   @keyframes shoot-ltr {
     0%   { transform: translateX(-150px); opacity: 1; }
     100% { transform: translateX(120vw); opacity: 0; }
@@ -914,7 +914,9 @@ function renderUpcoming() {
 
     const diff  = Math.ceil((first - getToday()) / 86400000);
     const card  = document.createElement('div');
-    const isNext = firstUpcoming && diff >= 0;
+    const now0 = new Date();
+    const afterMag = _prayerTimes && now0 > parseTime(_prayerTimes.Maghrib);
+    const isNext = firstUpcoming && diff >= 0 && !(diff === 0 && afterMag);
     if (isNext) firstUpcoming = false;
     card.className = 'fast-card' + (isNext ? ' next' : '');
 
@@ -922,9 +924,6 @@ function renderUpcoming() {
     const iconBg    = isWeekly ? '#E6F1FB' : '#E1F5EE';
     const iconColor = isWeekly ? '#185FA5' : '#0F6E56';
 
-    // FIX: use stored _prayerTimes via global reference (consistent naming)
-    const now0 = new Date();
-    const afterMag = _prayerTimes && now0 > parseTime(_prayerTimes.Maghrib);
     // "Tomorrow" blinking window: after Maghrib today until tomorrow's Fajr
     const tomorrowFajrT = _prayerTimes ? parseTomorrow(_prayerTimes.Fajr) : null;
     const inTomorrowWindow = afterMag && tomorrowFajrT && now0 < tomorrowFajrT;
@@ -1597,9 +1596,7 @@ function renderPrayers(times, city) {
     }
 
     if (inMaghribWarn) {
-      const isFasting = isFastingToday();
-      const label = isFasting ? 'Iftar' : 'Maghrib';
-      showPrayerWarn(label, maghribTimeW);
+      showPrayerWarn('Maghrib', maghribTimeW);
       // Grid: Asr flashes green, Maghrib purple
       if (_grid) {
         const _asrIdx = PRAYER_KEYS.indexOf('Asr');
