@@ -1,0 +1,17 @@
+name: Notify users of app update
+
+# Runs automatically every time you push to main — no manual step needed.
+on:
+  push:
+    branches: [main]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping push server to notify all subscribers
+        run: |
+          curl -sS -X POST "https://islamic-fasting-push-server.onrender.com/notify-update" \
+            -H "Content-Type: application/json" \
+            -H "x-admin-secret: ${{ secrets.ADMIN_SECRET }}" \
+            -d '{"title":"🔄 App updated","body":"A new version is ready. Please force-quit and reopen the app to get it."}'
