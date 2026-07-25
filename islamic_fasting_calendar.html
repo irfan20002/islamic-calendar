@@ -2674,7 +2674,7 @@ function importFastingData(event) {
 // ── Push server URL ──────────────────────────────────────────────────────
 const PUSH_SERVER = 'https://islamic-fasting-push-server.onrender.com';
 setInterval(() => fetch(`${PUSH_SERVER}/`).catch(() => {}), 60 * 1000);
-const VAPID_PUBLIC_KEY = 'BOAaqCPlyrXIiDpWE55EWQFbao6e5jEAmDKeB91s8TUMKAXMpASUj59cIwFqGa25QSb3Q9wsed819mVkmR0Uqlw';
+const VAPID_PUBLIC_KEY = 'BMYcmSJF5ySlPHl4CRrue9XdpWXjrNwQpTChSwfvaIx1jcUVy8dlDcAhuakichl2rS26EbxrhZqBlWVW32ZMF-E';
 
 function urlBase64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
