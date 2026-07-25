@@ -2674,7 +2674,14 @@ function importFastingData(event) {
 // ── Push server URL ──────────────────────────────────────────────────────
 const PUSH_SERVER = 'https://islamic-fasting-push-server.onrender.com';
 setInterval(() => fetch(`${PUSH_SERVER}/`).catch(() => {}), 60 * 1000);
-const VAPID_PUBLIC_KEY = 'BMYcmSJF5ySlPHl4CRrue9XdpWXjrNwQpTChSwfvaIx1jcUVy8dlDcAhuakichl2rS26EbxrhZqBlWVW32ZMF-E';
+let VAPID_PUBLIC_KEY = null;
+async function getVapidKey() {
+  if (VAPID_PUBLIC_KEY) return VAPID_PUBLIC_KEY;
+  const res = await fetch(`${PUSH_SERVER}/vapid-public-key`);
+  const data = await res.json();
+  VAPID_PUBLIC_KEY = data.key;
+  return VAPID_PUBLIC_KEY;
+}
 
 function urlBase64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -2688,6 +2695,7 @@ async function registerPushSubscription() {
   try {
     const reg = await navigator.serviceWorker.ready;
     let sub = await reg.pushManager.getSubscription();
+    const VAPID_PUBLIC_KEY = await getVapidKey();
 
     // ── One-time forced reset for the July 2026 VAPID key rotation ──
     // Old subscriptions created before this rotation are permanently dead;
