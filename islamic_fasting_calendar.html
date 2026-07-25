@@ -2688,11 +2688,33 @@ async function registerPushSubscription() {
   try {
     const reg = await navigator.serviceWorker.ready;
     let sub = await reg.pushManager.getSubscription();
+
+    // ── One-time forced reset for the July 2026 VAPID key rotation ──
+    // Old subscriptions created before this rotation are permanently dead;
+    // the browser can't tell us which key they used, so we force everyone
+    // through unsubscribe+resubscribe exactly once via this flag.
+    const RESET_FLAG = 'vapid_reset_2026_07';
+    if (sub && !localStorage.getItem(RESET_FLAG)) {
+      console.warn('Forcing one-time resubscribe after VAPID key rotation');
+      await sub.unsubscribe();
+      sub = null;
+      localStorage.setItem(RESET_FLAG, 'true');
+    }
+
+    // ── Ongoing protection: detect any future key rotation too ──
+    const storedKey = localStorage.getItem('vapid_key_used');
+    if (sub && storedKey && storedKey !== VAPID_PUBLIC_KEY) {
+      console.warn('VAPID key changed — resubscribing with new key');
+      await sub.unsubscribe();
+      sub = null;
+    }
+
     if (!sub) {
       sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
       });
+      localStorage.setItem('vapid_key_used', VAPID_PUBLIC_KEY);
     }
     // Send subscription + location + prayer times to server
     const lat = window._cachedLat || 29.7604;
