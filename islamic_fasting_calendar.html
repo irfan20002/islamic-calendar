@@ -2724,13 +2724,37 @@ async function registerPushSubscription() {
       });
       localStorage.setItem('vapid_key_used', VAPID_PUBLIC_KEY);
     }
-    // Send subscription + location + prayer times to server
+    // A persistent per-device ID (survives resubscription, unlike the push
+    // endpoint itself, which changes whenever the browser generates a new
+    // subscription — e.g. during the VAPID reset above). Sent to the server
+    // so it can replace this device's old subscription instead of piling up
+    // a new row every time — this is what prevents duplicate notifications
+    // from accumulating stale subscriptions.
+    let deviceId = localStorage.getItem('push_device_id');
+    const isFirstTimeOnDeviceId = !deviceId;
+    if (!deviceId) {
+      deviceId = 'dev_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+      localStorage.setItem('push_device_id', deviceId);
+    }
+    // If this is the first time this browser is using the deviceId system,
+    // it may already have an old subscription row on the server keyed by
+    // the endpoint tail (from before this update). Clean it up explicitly
+    // here, once, during the transition, so it doesn't linger alongside the
+    // new deviceId-keyed row and cause a permanent duplicate.
+    if (isFirstTimeOnDeviceId && sub && sub.endpoint) {
+      fetch(`${PUSH_SERVER}/unsubscribe`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ endpoint: sub.endpoint })
+      }).catch(() => {}); // best-effort — don't block registration on this
+    }
+    // Send subscription + location + device ID to server
     const lat = window._cachedLat || 29.7604;
     const lon = window._cachedLon || -95.3698;
     await fetch(`${PUSH_SERVER}/subscribe`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ subscription: sub, lat, lon })
+      body: JSON.stringify({ subscription: sub, lat, lon, deviceId })
     });
     console.log('Push subscription registered with server ✓');
   } catch (err) {
